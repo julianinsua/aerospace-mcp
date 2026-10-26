@@ -25,7 +25,12 @@ const WINDOW_FORMAT = [
 
 describe("tool argv", () => {
   it.each([
-    ["list_workspaces", {}, ["list-workspaces", "--monitor", "all", ...WORKSPACE_FORMAT, "--json"]],
+    [
+      "list_workspaces",
+      {},
+      ["list-workspaces", "--monitor", "focused", ...WORKSPACE_FORMAT, "--json"],
+    ],
+    ["list_windows", {}, ["list-windows", "--monitor", "focused", ...WINDOW_FORMAT, "--json"]],
     [
       "list_workspaces",
       { scope: "all" },
@@ -52,7 +57,7 @@ describe("tool argv", () => {
     ],
     [
       "list_windows",
-      { monitor: "focused", workspace: 2, appBundleId: "com.apple.Safari" },
+      { monitor: "focused", workspace: "2", appBundleId: "com.apple.Safari" },
       [
         "list-windows",
         "--monitor",
@@ -87,15 +92,22 @@ describe("tool argv", () => {
     ],
     [
       "move_window_to_workspace",
-      { target: 3, focusFollowsWindow: true, failIfNoop: true, windowId: 5, wrapAround: true },
+      { target: "3", focusFollowsWindow: true, failIfNoop: true, windowId: 5, wrapAround: true },
       [
         "move-node-to-workspace",
         "--focus-follows-window",
         "--fail-if-noop",
         "--window-id",
         "5",
+        "--",
         "3",
       ],
+    ],
+    ["move_window_to_workspace", { target: "S" }, ["move-node-to-workspace", "--", "S"]],
+    [
+      "list_windows",
+      { workspace: "S" },
+      ["list-windows", "--workspace", "S", ...WINDOW_FORMAT, "--json"],
     ],
   ])("%s %j", (name, input, expected) => {
     expect(argsFor(name, input)).toEqual(expected);

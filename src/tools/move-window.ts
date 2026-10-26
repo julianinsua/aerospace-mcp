@@ -14,14 +14,20 @@ export const moveWindowTool = defineTool({
   command: "move",
   readOnly: false,
   description:
-    "Move the focused window within the current workspace or within the outer frame of all monitors.",
+    "Move a window one step left, down, up or right in the AeroSpace layout tree. By default the window stays inside its workspace; set boundaries to all-monitors-outer-frame to let it cross onto the adjacent monitor. Acts on the focused window unless windowId is given.",
   inputSchema: z.object({
     direction: directionSchema,
     windowId: windowIdSchema.optional(),
     boundaries: boundariesSchema.optional(),
     boundariesAction: boundariesActionSchema.optional(),
-    failIfFullScreen: z.boolean().optional(),
-    failIfMacOSNativeFullscreen: z.boolean().optional(),
+    failIfFullScreen: z
+      .boolean()
+      .optional()
+      .describe("Exit with an error if the window is in AeroSpace fullscreen"),
+    failIfMacOSNativeFullscreen: z
+      .boolean()
+      .optional()
+      .describe("Exit with an error if the window is in macOS native fullscreen"),
   }),
   toArgs: ({
     direction,

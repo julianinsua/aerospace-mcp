@@ -7,19 +7,26 @@ export const listWindowsTool = defineTool({
   command: "list-windows",
   readOnly: true,
   description:
-    "List AeroSpace windows. scope all lists every workspace; focused lists the workspace that has focus. monitor targets the workspaces visible in current monitors.",
+    "List AeroSpace windows with their window id, app name, bundle id, pid, title, fullscreen state, workspace and monitor. Filters combine. With no monitor or workspace, only windows on the focused monitor are listed. Use the window id with the move tools.",
   inputSchema: z.object({
-    scope: scopeSchema.optional().describe("Use a shortcut to select windows"),
+    scope: scopeSchema
+      .optional()
+      .describe(
+        "Shortcut that overrides every other filter: all lists the windows on every monitor, focused returns only the focused window (an error if no window has focus)",
+      ),
     monitor: monitorSchema.optional(),
     workspace: workspaceSchema.optional(),
-    pid: z.number().optional(),
-    appBundleId: z.string().optional(),
+    pid: z.number().int().optional().describe("Only windows owned by this process id"),
+    appBundleId: z
+      .string()
+      .optional()
+      .describe('Only windows of the app with this bundle id, for example "com.google.Chrome"'),
   }),
   toArgs: ({ scope, monitor, workspace, pid, appBundleId }) => [
     ...(scope
       ? [`--${scope}`]
       : [
-          ...option("monitor", monitor),
+          ...option("monitor", monitor ?? (workspace === undefined ? "focused" : undefined)),
           ...option("workspace", workspace),
           ...option("pid", pid),
           ...option("app-bundle-id", appBundleId),

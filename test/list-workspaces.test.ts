@@ -42,7 +42,7 @@ describe("list_workspaces", () => {
     const result = await client.callTool({ name: "list_workspaces", arguments: {} });
 
     expect(aerospace.calls).toEqual([
-      ["list-workspaces", "--monitor", "all", ...WORKSPACE_FORMAT, "--json"],
+      ["list-workspaces", "--monitor", "focused", ...WORKSPACE_FORMAT, "--json"],
     ]);
     expect(result.isError).not.toBe(true);
     expect(result.content).toEqual([

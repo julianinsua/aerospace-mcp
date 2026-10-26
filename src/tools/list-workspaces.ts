@@ -7,12 +7,26 @@ export const listWorkspacesTool = defineTool({
   command: "list-workspaces",
   readOnly: true,
   description:
-    "List AeroSpace workspaces. scope all lists every workspace; focused lists the workspace that has focus. monitor targets workspaces assigned to a monitor. monitor all targets all monitors, monitor focused targets the monitor with current focus, monitor mouse targets the monitor where the mouse is currently placed. visible filters workspaces that are currently visible or not; if it's not set, both are included. empty filters workspaces that are currently empty or not; if it's not set, both are included.",
+    "List AeroSpace workspaces with their name, whether each is focused or visible, the monitor it is on, and its root layout. By default only workspaces on the focused monitor are listed; pass monitor all to include every monitor. Workspace names are strings; use them as-is in other tools.",
   inputSchema: z.object({
-    scope: scopeSchema.optional().describe("Use a shortcut to select workspaces"),
-    monitor: monitorSchema,
-    visible: z.boolean().optional().describe("Filter visible workspaces"),
-    empty: z.boolean().optional().describe("Filter empty workspaces"),
+    scope: scopeSchema
+      .optional()
+      .describe(
+        "Shortcut that overrides monitor, visible and empty: all lists the workspaces on every monitor, focused lists only the focused workspace",
+      ),
+    monitor: monitorSchema.default("focused"),
+    visible: z
+      .boolean()
+      .optional()
+      .describe(
+        "true lists only visible workspaces, false only hidden ones. Omit to include both. With several monitors, several workspaces are visible",
+      ),
+    empty: z
+      .boolean()
+      .optional()
+      .describe(
+        "true lists only workspaces without windows, false only those with windows. Omit to include both",
+      ),
   }),
   toArgs: ({ scope, monitor, visible, empty }) => [
     ...(scope
