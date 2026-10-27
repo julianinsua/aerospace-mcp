@@ -22,6 +22,7 @@ const WINDOW_FORMAT = [
   "--format",
   "%{window-id} %{app-name} %{app-bundle-id} %{app-pid} %{window-title} %{window-is-fullscreen} %{workspace} %{monitor-id}",
 ];
+const MONITOR_FORMAT = ["--format", "%{monitor-id} %{monitor-name} %{monitor-is-main}"];
 
 describe("tool argv", () => {
   it.each([
@@ -115,6 +116,17 @@ describe("tool argv", () => {
       { quitIfLastWindow: true, windowId: 7 },
       ["close", "--quit-if-last-window", "--window-id", "7"],
     ],
+    ["list_monitors", {}, ["list-monitors", ...MONITOR_FORMAT, "--json"]],
+    [
+      "list_monitors",
+      { focused: true },
+      ["list-monitors", "--focused", ...MONITOR_FORMAT, "--json"],
+    ],
+    [
+      "list_monitors",
+      { mouse: false },
+      ["list-monitors", "--mouse", "no", ...MONITOR_FORMAT, "--json"],
+    ],
   ])("%s %j", (name, input, expected) => {
     expect(argsFor(name, input)).toEqual(expected);
   });
@@ -161,6 +173,7 @@ describe("registered tools", () => {
       Object.fromEntries(listed.map((tool) => [tool.name, tool.annotations?.readOnlyHint])),
     ).toEqual({
       close_window: false,
+      list_monitors: true,
       list_workspaces: true,
       list_windows: true,
       move_window: false,
@@ -174,7 +187,11 @@ describe("registered tools", () => {
     try {
       const client = await connect(recordingRunner());
       const { tools: listed } = await client.listTools();
-      expect(listed.map((tool) => tool.name).sort()).toEqual(["list_windows", "list_workspaces"]);
+      expect(listed.map((tool) => tool.name).sort()).toEqual([
+        "list_monitors",
+        "list_windows",
+        "list_workspaces",
+      ]);
     } finally {
       if (previous === undefined) {
         delete process.env.AEROSPACE_ALLOW_MUTATIONS;
