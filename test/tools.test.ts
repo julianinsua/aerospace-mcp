@@ -109,24 +109,44 @@ describe("tool argv", () => {
       { workspace: "S" },
       ["list-windows", "--workspace", "S", ...WINDOW_FORMAT, "--json"],
     ],
+    ["close_window", {}, ["close"]],
+    [
+      "close_window",
+      { quitIfLastWindow: true, windowId: 7 },
+      ["close", "--quit-if-last-window", "--window-id", "7"],
+    ],
   ])("%s %j", (name, input, expected) => {
     expect(argsFor(name, input)).toEqual(expected);
   });
 });
 
+function recordingRunner(): AerospaceRunner & { calls: string[][] } {
+  const calls: string[][] = [];
+  return {
+    calls,
+    async run(args) {
+      calls.push(args);
+      return { code: 0, stdout: "", stderr: "" };
+    },
+  };
+}
+
+async function connect(
+  runner: AerospaceRunner,
+  options?: Parameters<typeof createServer>[1],
+): Promise<Client> {
+  const server = createServer(runner, options);
+  const client = new Client({ name: "test", version: "0.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await Promise.all([client.connect(clientTransport), server.connect(serverTransport)]);
+  return client;
+}
+
 describe("registered tools", () => {
   it("runs mutating tools without --json and reports success", async () => {
-    const calls: string[][] = [];
-    const runner: AerospaceRunner = {
-      async run(args) {
-        calls.push(args);
-        return { code: 0, stdout: "", stderr: "" };
-      },
-    };
-    const server = createServer(runner);
-    const client = new Client({ name: "test", version: "0.0.0" });
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-    await Promise.all([client.connect(clientTransport), server.connect(serverTransport)]);
+    const runner = recordingRunner();
+    const { calls } = runner;
+    const client = await connect(runner, { allowMutations: true });
 
     const result = await client.callTool({
       name: "move_window",
@@ -140,10 +160,50 @@ describe("registered tools", () => {
     expect(
       Object.fromEntries(listed.map((tool) => [tool.name, tool.annotations?.readOnlyHint])),
     ).toEqual({
+      close_window: false,
       list_workspaces: true,
       list_windows: true,
       move_window: false,
       move_window_to_workspace: false,
     });
+  });
+
+  it("hides mutating tools unless AEROSPACE_ALLOW_MUTATIONS is 1", async () => {
+    const previous = process.env.AEROSPACE_ALLOW_MUTATIONS;
+    delete process.env.AEROSPACE_ALLOW_MUTATIONS;
+    try {
+      const client = await connect(recordingRunner());
+      const { tools: listed } = await client.listTools();
+      expect(listed.map((tool) => tool.name).sort()).toEqual(["list_windows", "list_workspaces"]);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.AEROSPACE_ALLOW_MUTATIONS;
+      } else {
+        process.env.AEROSPACE_ALLOW_MUTATIONS = previous;
+      }
+    }
+  });
+
+  it("requires confirm: true before running close_window", async () => {
+    const runner = recordingRunner();
+    const client = await connect(runner, { allowMutations: true });
+
+    const { tools: listed } = await client.listTools();
+    const close = listed.find((tool) => tool.name === "close_window");
+    expect(close?.annotations?.destructiveHint).toBe(true);
+    expect(close?.inputSchema.required).toContain("confirm");
+
+    for (const args of [{ windowId: 7 }, { windowId: 7, confirm: false }]) {
+      const rejected = await client.callTool({ name: "close_window", arguments: args });
+      expect(rejected.isError).toBe(true);
+    }
+    expect(runner.calls).toEqual([]);
+
+    const result = await client.callTool({
+      name: "close_window",
+      arguments: { windowId: 7, confirm: true },
+    });
+    expect(result.isError).not.toBe(true);
+    expect(runner.calls).toEqual([["close", "--window-id", "7"]]);
   });
 });

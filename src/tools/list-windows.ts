@@ -22,6 +22,7 @@ export const listWindowsTool = defineTool({
       .optional()
       .describe('Only windows of the app with this bundle id, for example "com.google.Chrome"'),
   }),
+  hintDestructive: false,
   toArgs: ({ scope, monitor, workspace, pid, appBundleId }) => [
     ...(scope
       ? [`--${scope}`]

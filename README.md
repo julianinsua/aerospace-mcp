@@ -2,7 +2,10 @@
 
 Local [MCP](https://modelcontextprotocol.io) server that controls the [AeroSpace](https://github.com/nikitabobko/AeroSpace) window manager by spawning its command-line tool. Stdio transport only.
 
-Tools: `list_workspaces`, `list_windows` (read-only), `move_window`, `move_window_to_workspace`.
+Tools:
+
+- Read-only, always available: `list_workspaces`, `list_windows`.
+- Mutating, only with `AEROSPACE_ALLOW_MUTATIONS=1`: `move_window`, `move_window_to_workspace`, `close_window` (destructive, requires `confirm: true`).
 
 ## Requirements
 
@@ -31,6 +34,8 @@ Inspect the server:
 pnpm dlx @modelcontextprotocol/inspector node dist/index.js
 ```
 
+To see the mutating tools in the inspector, set `AEROSPACE_ALLOW_MUTATIONS=1` in the server's environment variables before connecting.
+
 ## Cursor
 
 Build first, then add this to `~/.cursor/mcp.json` (path is this checkout):
@@ -42,12 +47,15 @@ Build first, then add this to `~/.cursor/mcp.json` (path is this checkout):
       "command": "node",
       "args": ["/Users/julianinsua/code/aerospace-mcp/dist/index.js"],
       "env": {
-        "AEROSPACE_BIN": "/opt/homebrew/bin/aerospace"
+        "AEROSPACE_BIN": "/opt/homebrew/bin/aerospace",
+        "AEROSPACE_ALLOW_MUTATIONS": "1"
       }
     }
   }
 }
 ```
+
+Leave out `AEROSPACE_ALLOW_MUTATIONS` for a read-only server.
 
 ## Behavior
 
@@ -60,8 +68,10 @@ Both list tools default to the focused monitor, as AeroSpace's docs recommend fo
 
 ## Adding a tool
 
-Each tool is one module in `src/tools/` built with `defineTool`: MCP name, AeroSpace subcommand, description, Zod input schema, `readOnly`, and `toArgs(input)` returning the arguments after the subcommand. Use the `option`, `flag`, `toggle` and `format` helpers from `src/tools/args.ts`. Add the tool to the list in `src/tools/index.ts` and an argv case to `test/tools.test.ts`. `registerAerospaceTool` handles registration, `--json`, the `readOnlyHint` annotation and error mapping.
+Each tool is one module in `src/tools/` built with `defineTool`: MCP name, AeroSpace subcommand, description, Zod input schema, `readOnly`, `hintDestructive`, and `toArgs(input)` returning the arguments after the subcommand. Use the `option`, `flag`, `toggle` and `format` helpers from `src/tools/args.ts`. Add the tool to the list in `src/tools/index.ts` and an argv case to `test/tools.test.ts`. `registerAerospaceTool` handles registration, `--json`, the `readOnlyHint` and `destructiveHint` annotations, the `confirm` field and error mapping.
 
 ## Mutations
 
-Planned rule: tools that change windows, focus, layout, or reload config stay unregistered unless `AEROSPACE_ALLOW_MUTATIONS=1`, and `close` / `close-all-windows-but-current` require `confirm: true`. Not enforced yet: `move_window` and `move_window_to_workspace` are always registered.
+Tools with `readOnly: false` are registered only when `AEROSPACE_ALLOW_MUTATIONS=1`. Without it, the server exposes the list tools only. `createServer(runner, { allowMutations })` overrides the variable, which the tests use.
+
+Tools with `hintDestructive: true` (currently `close_window`) also get the `destructiveHint` annotation and a required `confirm` argument that must be `true`. A call without it fails validation before AeroSpace runs. This is a guard against accidental calls, not a security boundary: a model can still send `confirm: true`. Moving windows is reversible, so the move tools are not marked destructive.

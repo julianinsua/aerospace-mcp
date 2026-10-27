@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { z } from "zod";
+import { z } from "zod";
 import type { AerospaceRunner } from "../aerospace.js";
 
 export interface AerospaceTool<Schema extends z.ZodObject = z.ZodObject> {
@@ -9,6 +9,7 @@ export interface AerospaceTool<Schema extends z.ZodObject = z.ZodObject> {
   description: string;
   inputSchema: Schema;
   readOnly: boolean;
+  hintDestructive: boolean;
   toArgs(input: z.output<Schema>): string[];
 }
 
@@ -53,6 +54,12 @@ export function toCommandArgs(tool: AerospaceTool, input: z.output<z.ZodObject>)
   return tool.readOnly ? [...args, "--json"] : args;
 }
 
+const confirmationField = {
+  confirm: z
+    .literal(true)
+    .describe("Must be true. Only set it after the user has explicitly asked for this action"),
+};
+
 export function registerAerospaceTool(
   server: McpServer,
   runner: AerospaceRunner,
@@ -62,8 +69,10 @@ export function registerAerospaceTool(
     tool.name,
     {
       description: tool.description,
-      inputSchema: tool.inputSchema,
-      annotations: { readOnlyHint: tool.readOnly },
+      inputSchema: tool.hintDestructive
+        ? tool.inputSchema.extend(confirmationField)
+        : tool.inputSchema,
+      annotations: { readOnlyHint: tool.readOnly, destructiveHint: tool.hintDestructive },
     },
     async (input) => runCommand(runner, toCommandArgs(tool, input), tool.readOnly),
   );

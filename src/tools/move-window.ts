@@ -29,6 +29,7 @@ export const moveWindowTool = defineTool({
       .optional()
       .describe("Exit with an error if the window is in macOS native fullscreen"),
   }),
+  hintDestructive: false,
   toArgs: ({
     direction,
     windowId,

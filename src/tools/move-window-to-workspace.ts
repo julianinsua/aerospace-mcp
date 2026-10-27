@@ -9,6 +9,7 @@ export const moveWindowToWorkspaceTool = defineTool({
   name: "move_window_to_workspace",
   command: "move-node-to-workspace",
   readOnly: false,
+  hintDestructive: false,
   description:
     "Move a window to another workspace, either by workspace name or to the next or previous workspace on the focused monitor (alphabetical order). Acts on the focused window unless windowId is given.",
   inputSchema: z.object({
