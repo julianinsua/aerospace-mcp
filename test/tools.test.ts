@@ -223,7 +223,7 @@ describe("registered tools", () => {
       Object.fromEntries(listed.map((tool) => [tool.name, tool.annotations?.readOnlyHint])),
     ).toEqual({
       close_window: false,
-      focus_window: false,
+      focus_window: true,
       list_monitors: true,
       list_workspaces: true,
       list_windows: true,
@@ -239,6 +239,7 @@ describe("registered tools", () => {
       const client = await connect(recordingRunner());
       const { tools: listed } = await client.listTools();
       expect(listed.map((tool) => tool.name).sort()).toEqual([
+        "focus_window",
         "list_monitors",
         "list_windows",
         "list_workspaces",

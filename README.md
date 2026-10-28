@@ -4,8 +4,8 @@ Local [MCP](https://modelcontextprotocol.io) server that controls the [AeroSpace
 
 Tools:
 
-- Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`.
-- Mutating, only with `AEROSPACE_ALLOW_MUTATIONS=1`: `focus_window`, `move_window`, `move_window_to_workspace`, `close_window` (destructive, requires `confirm: true`).
+- Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`, `focus_window` (changes focus, not the window tree).
+- Mutating, only with `AEROSPACE_ALLOW_MUTATIONS=1`: `move_window`, `move_window_to_workspace`, `close_window` (destructive, requires `confirm: true`).
 
 ## Requirements
 
@@ -65,14 +65,14 @@ Each tool runs one `aerospace` subcommand. Read-only tools append `--json` and r
 - `list_workspaces`: `workspace`, `workspace-is-focused`, `workspace-is-visible`, `monitor-id`, `monitor-name`, `workspace-root-container-layout`.
 - `list_windows`: `window-id`, `app-name`, `app-bundle-id`, `app-pid`, `window-title`, `window-is-fullscreen`, `workspace`, `monitor-id`.
 
-`list_workspaces` and `list_windows` default to the focused monitor, as AeroSpace's docs recommend for automation. Pass `monitor: "all"` or `scope: "all"` to see every monitor. Workspace arguments are names (strings such as `"1"` or `"S"`). `move_window_to_workspace` sends a name after `--`, and treats `"next"` / `"prev"` as steps. Mutating tools return `success` when AeroSpace exits 0. The binary comes from `AEROSPACE_BIN`, or `aerospace` on `PATH`. Stdin is closed, because AeroSpace waits on an open stdin pipe. The command times out after 5 seconds. A missing binary, a timeout, a non-zero exit, or invalid JSON becomes a tool error. Logs go to stderr.
+`list_workspaces` and `list_windows` default to the focused monitor, as AeroSpace's docs recommend for automation. Pass `monitor: "all"` or `scope: "all"` to see every monitor. Workspace arguments are names (strings such as `"1"` or `"S"`). `move_window_to_workspace` sends a name after `--`, and treats `"next"` / `"prev"` as steps. Tools without JSON output (`focus_window` and the mutating tools) return `success` when AeroSpace exits 0. The binary comes from `AEROSPACE_BIN`, or `aerospace` on `PATH`. Stdin is closed, because AeroSpace waits on an open stdin pipe. The command times out after 5 seconds. A missing binary, a timeout, a non-zero exit, or invalid JSON becomes a tool error. Logs go to stderr.
 
 ## Adding a tool
 
-Each tool is one module in `src/tools/` built with `defineTool`: MCP name, AeroSpace subcommand, description, Zod input schema, `readOnly`, `hintDestructive`, and `toArgs(input)` returning the arguments after the subcommand. Use the `option`, `flag`, `toggle` and `format` helpers from `src/tools/args.ts`. Add the tool to the list in `src/tools/index.ts` and an argv case to `test/tools.test.ts`. `registerAerospaceTool` handles registration, `--json`, the `readOnlyHint` and `destructiveHint` annotations, the `confirm` field and error mapping.
+Each tool is one module in `src/tools/` built with `defineTool`: MCP name, AeroSpace subcommand, description, Zod input schema, `readOnly`, `json` (the subcommand supports `--json`), `hintDestructive`, and `toArgs(input)` returning the arguments after the subcommand. Use the `option`, `flag`, `toggle` and `format` helpers from `src/tools/args.ts`. Add the tool to the list in `src/tools/index.ts` and an argv case to `test/tools.test.ts`. `registerAerospaceTool` handles registration, `--json` and JSON parsing for `json: true`, the `readOnlyHint` and `destructiveHint` annotations, the `confirm` field and error mapping.
 
 ## Mutations
 
-Tools with `readOnly: false` are registered only when `AEROSPACE_ALLOW_MUTATIONS=1`. Without it, the server exposes the read-only tools only. `createServer(runner, { allowMutations })` overrides the variable, which the tests use.
+Tools with `readOnly: false` change the window tree and are registered only when `AEROSPACE_ALLOW_MUTATIONS=1`. Focus changes count as read-only. Without it, the server exposes the read-only tools only. `createServer(runner, { allowMutations })` overrides the variable, which the tests use.
 
 Tools with `hintDestructive: true` (currently `close_window`) also get the `destructiveHint` annotation and a required `confirm` argument that must be `true`. A call without it fails validation before AeroSpace runs. This is a guard against accidental calls, not a security boundary: a model can still send `confirm: true`. Moving windows is reversible, so the move tools are not marked destructive.

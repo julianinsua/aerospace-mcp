@@ -9,6 +9,7 @@ export interface AerospaceTool<Schema extends z.ZodObject = z.ZodObject> {
   description: string;
   inputSchema: Schema;
   readOnly: boolean;
+  json: boolean;
   hintDestructive: boolean;
   toArgs(input: z.output<Schema>): string[];
 }
@@ -51,7 +52,7 @@ export async function runCommand(
 
 export function toCommandArgs(tool: AerospaceTool, input: z.output<z.ZodObject>): string[] {
   const args = [tool.command, ...tool.toArgs(input)];
-  return tool.readOnly ? [...args, "--json"] : args;
+  return tool.json ? [...args, "--json"] : args;
 }
 
 const confirmationField = {
@@ -74,6 +75,6 @@ export function registerAerospaceTool(
         : tool.inputSchema,
       annotations: { readOnlyHint: tool.readOnly, destructiveHint: tool.hintDestructive },
     },
-    async (input) => runCommand(runner, toCommandArgs(tool, input), tool.readOnly),
+    async (input) => runCommand(runner, toCommandArgs(tool, input), tool.json),
   );
 }

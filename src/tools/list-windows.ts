@@ -6,6 +6,7 @@ export const listWindowsTool = defineTool({
   name: "list_windows",
   command: "list-windows",
   readOnly: true,
+  json: true,
   description:
     "List AeroSpace windows with their window id, app name, bundle id, pid, title, fullscreen state, workspace and monitor. Filters combine. With no monitor or workspace, only windows on the focused monitor are listed. Use the window id with the move tools.",
   inputSchema: z.object({

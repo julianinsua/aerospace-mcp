@@ -13,6 +13,7 @@ export const moveWindowTool = defineTool({
   name: "move_window",
   command: "move",
   readOnly: false,
+  json: false,
   description:
     "Move a window one step left, down, up or right in the AeroSpace layout tree. By default the window stays inside its workspace; set boundaries to all-monitors-outer-frame to let it cross onto the adjacent monitor. Acts on the focused window unless windowId is given.",
   inputSchema: z.object({

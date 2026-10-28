@@ -6,6 +6,7 @@ export const listWorkspacesTool = defineTool({
   name: "list_workspaces",
   command: "list-workspaces",
   readOnly: true,
+  json: true,
   description:
     "List AeroSpace workspaces with their name, whether each is focused or visible, the monitor it is on, and its root layout. By default only workspaces on the focused monitor are listed; pass monitor all to include every monitor. Workspace names are strings; use them as-is in other tools.",
   inputSchema: z.object({
