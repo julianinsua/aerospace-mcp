@@ -1,9 +1,6 @@
 import { z } from "zod";
-import { flag, option, stepSchema, windowIdSchema } from "./args.js";
+import { flag, isStep, option, windowIdSchema } from "./args.js";
 import { defineTool } from "./tool.js";
-
-const isStep = (target: string): target is z.infer<typeof stepSchema> =>
-  stepSchema.safeParse(target).success;
 
 export const moveWindowToWorkspaceTool = defineTool({
   name: "move_window_to_workspace",

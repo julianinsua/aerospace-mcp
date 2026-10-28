@@ -40,6 +40,23 @@ export const directionSchema = z
 
 export const stepSchema = z.enum(["next", "prev"]);
 
+export const isStep = (value: unknown): value is z.infer<typeof stepSchema> =>
+  stepSchema.safeParse(value).success;
+
+export const isDirection = (value: unknown): value is z.infer<typeof directionSchema> =>
+  directionSchema.safeParse(value).success;
+
+export const monitorTargetSchema = z.xor([z.number().int().min(1), z.string().min(1)]);
+
+// Directions and next/prev take --wrap-around; anything else is a monitor pattern sent after `--`.
+export const monitorTargetArgs = (
+  target: z.infer<typeof monitorTargetSchema>,
+  wrapAround: boolean | undefined,
+): string[] =>
+  isDirection(target) || isStep(target)
+    ? [...flag("wrap-around", wrapAround), target]
+    : ["--", String(target)];
+
 export const dfsStepSchema = z.enum(["dfs-next", "dfs-prev"]);
 
 export const boundariesSchema = z

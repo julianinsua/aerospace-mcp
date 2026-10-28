@@ -164,6 +164,43 @@ describe("tool argv", () => {
       { mouse: false },
       ["list-monitors", "--mouse", "no", ...MONITOR_FORMAT, "--json"],
     ],
+    ["switch_workspace", { target: "S" }, ["workspace", "--", "S"]],
+    [
+      "switch_workspace",
+      { target: "2", autoBackAndForth: true, wrapAround: true },
+      ["workspace", "--auto-back-and-forth", "--", "2"],
+    ],
+    [
+      "switch_workspace",
+      { target: "next", wrapAround: true, failIfNoop: true },
+      ["workspace", "--wrap-around", "next"],
+    ],
+    ["workspace_back_and_forth", {}, ["workspace-back-and-forth"]],
+    [
+      "focus_monitor",
+      { target: "left", wrapAround: true },
+      ["focus-monitor", "--wrap-around", "left"],
+    ],
+    ["focus_monitor", { target: "prev" }, ["focus-monitor", "prev"]],
+    ["focus_monitor", { target: 2, wrapAround: true }, ["focus-monitor", "--", "2"]],
+    ["focus_monitor", { target: "dell" }, ["focus-monitor", "--", "dell"]],
+    ["summon_workspace", { workspace: "3" }, ["summon-workspace", "--", "3"]],
+    [
+      "summon_workspace",
+      { workspace: "S", failIfNoop: true },
+      ["summon-workspace", "--fail-if-noop", "--", "S"],
+    ],
+    ["move_workspace_to_monitor", { target: "right" }, ["move-workspace-to-monitor", "right"]],
+    [
+      "move_workspace_to_monitor",
+      { target: "next", workspace: "S", wrapAround: true },
+      ["move-workspace-to-monitor", "--workspace", "S", "--wrap-around", "next"],
+    ],
+    [
+      "move_workspace_to_monitor",
+      { target: "main", workspace: "2" },
+      ["move-workspace-to-monitor", "--workspace", "2", "--", "main"],
+    ],
   ])("%s %j", (name, input, expected) => {
     expect(argsFor(name, input)).toEqual(expected);
   });
@@ -179,6 +216,15 @@ describe("tool argv", () => {
     [{ dfsIndex: -1 }],
   ])("focus_window rejects %j", (input) => {
     expect(() => argsFor("focus_window", input)).toThrow();
+  });
+
+  it.each([
+    ["switch_workspace", { target: "1", autoBackAndForth: true, failIfNoop: true }],
+    ["switch_workspace", { target: "" }],
+    ["focus_monitor", { target: 0 }],
+    ["move_workspace_to_monitor", { target: "" }],
+  ])("%s rejects %j", (name, input) => {
+    expect(() => argsFor(name, input)).toThrow();
   });
 });
 
@@ -223,12 +269,17 @@ describe("registered tools", () => {
       Object.fromEntries(listed.map((tool) => [tool.name, tool.annotations?.readOnlyHint])),
     ).toEqual({
       close_window: false,
+      focus_monitor: true,
       focus_window: true,
       list_monitors: true,
       list_workspaces: true,
       list_windows: true,
       move_window: false,
       move_window_to_workspace: false,
+      move_workspace_to_monitor: false,
+      summon_workspace: false,
+      switch_workspace: true,
+      workspace_back_and_forth: true,
     });
   });
 
@@ -239,10 +290,13 @@ describe("registered tools", () => {
       const client = await connect(recordingRunner());
       const { tools: listed } = await client.listTools();
       expect(listed.map((tool) => tool.name).sort()).toEqual([
+        "focus_monitor",
         "focus_window",
         "list_monitors",
         "list_windows",
         "list_workspaces",
+        "switch_workspace",
+        "workspace_back_and_forth",
       ]);
     } finally {
       if (previous === undefined) {
