@@ -11,7 +11,7 @@ Tools:
 
 - Node 24 (see `.nvmrc`). `engines` allows Node `>=22`.
 - pnpm 10.18 (`packageManager` in `package.json`)
-- AeroSpace 0.21.3-Beta. Tool flags follow that version's `--help`, and older versions reject some of them (for example `move --fail-if-fullscreen`). This machine has it at `/opt/homebrew/bin/aerospace`. MCP clients often start servers with a short `PATH`, so set `AEROSPACE_BIN`.
+- AeroSpace 0.21.3-Beta. Tool flags follow that version's `--help`, and older versions reject some of them (for example `move --fail-if-fullscreen`). Homebrew installs it at `/opt/homebrew/bin/aerospace`. MCP clients often start servers with a short `PATH`, so set `AEROSPACE_BIN` (see [Connecting agents](#connecting-agents)).
 
 ## Setup
 
@@ -39,16 +39,31 @@ pnpm dlx @modelcontextprotocol/inspector node dist/index.js
 
 To see the mutating tools in the inspector, set `AEROSPACE_ALLOW_MUTATIONS=1` in the server's environment variables before connecting.
 
-## Cursor
+## Connecting agents
 
-Build first, then add this to `~/.cursor/mcp.json` (path is this checkout):
+Run `pnpm build` first: clients start `dist/index.js`, not the sources. After changing the server, rebuild and restart it in each client.
+
+### Defaults
+
+| Setting | Default | Change it with |
+|---|---|---|
+| Tools exposed | Read-only and focus tools only. The move tools and `close_window` are not registered | `AEROSPACE_ALLOW_MUTATIONS=1` in the server's `env` |
+| AeroSpace binary | `aerospace` on the server's `PATH` | `AEROSPACE_BIN=/absolute/path/to/aerospace` |
+| Tool approval | Each client asks before every tool call | The client's allowlist, see [Tool approval](#tool-approval) |
+| `close_window` | Requires `confirm: true` in the call | Not configurable |
+
+GUI clients such as Cursor and Claude Desktop can start servers with a short `PATH` when launched from the Dock, so use absolute paths for `node` and `AEROSPACE_BIN`. Homebrew installs both under `/opt/homebrew/bin`. A version manager path such as `~/.nvm/versions/node/<version>/bin/node` also works, but breaks when that version is removed.
+
+### Server entry
+
+Cursor and Claude Desktop use the same entry. Replace `/absolute/path/to/aerospace-mcp` with this checkout, and leave out `AEROSPACE_ALLOW_MUTATIONS` for a server that can only read and change focus:
 
 ```json
 {
   "mcpServers": {
     "aerospace": {
-      "command": "node",
-      "args": ["/Users/julianinsua/code/aerospace-mcp/dist/index.js"],
+      "command": "/opt/homebrew/bin/node",
+      "args": ["/absolute/path/to/aerospace-mcp/dist/index.js"],
       "env": {
         "AEROSPACE_BIN": "/opt/homebrew/bin/aerospace",
         "AEROSPACE_ALLOW_MUTATIONS": "1"
@@ -58,7 +73,63 @@ Build first, then add this to `~/.cursor/mcp.json` (path is this checkout):
 }
 ```
 
-Leave out `AEROSPACE_ALLOW_MUTATIONS` for a read-only server.
+- **Cursor** (editor and `agent` CLI): add it to `~/.cursor/mcp.json`. `agent mcp list-tools aerospace` shows 17 tools with mutations on and 11 without.
+- **Claude Desktop**: add `mcpServers` to `~/Library/Application Support/Claude/claude_desktop_config.json`, then quit and reopen the app.
+- **Claude Code**: register it for all projects with
+
+  ```sh
+  claude mcp add --scope user aerospace \
+    -e AEROSPACE_BIN=/opt/homebrew/bin/aerospace -e AEROSPACE_ALLOW_MUTATIONS=1 \
+    -- /opt/homebrew/bin/node /absolute/path/to/aerospace-mcp/dist/index.js
+  ```
+
+  `claude mcp get aerospace` checks the connection. Use `--scope project` to share it through a `.mcp.json` in one repo instead.
+- **pi** with the Cursor provider (`pi-cursor-sdk`): it loads `~/.cursor/mcp.json`, so the Cursor entry is enough. Adding the server to `~/.pi/agent/mcp.json` as well gives the model a second copy of every tool.
+
+### Tool approval
+
+By default every client asks before each call. To let agents move windows on command, allowlist every tool except `close_window`, which keeps asking:
+
+- **Cursor editor**: `~/.cursor/permissions.json`. It takes effect in the Auto-review and Allowlist run modes, and when the file defines `mcpAllowlist` it replaces the MCP allowlist in Settings, so copy any existing entries into it. Entries are `server:tool`, and `aerospace:*` allows everything:
+
+  ```json
+  {
+    "mcpAllowlist": [
+      "aerospace:list_monitors",
+      "aerospace:list_workspaces",
+      "aerospace:list_windows",
+      "aerospace:list_apps",
+      "aerospace:list_modes",
+      "aerospace:get_config",
+      "aerospace:focus_window",
+      "aerospace:focus_back_and_forth",
+      "aerospace:focus_monitor",
+      "aerospace:switch_workspace",
+      "aerospace:workspace_back_and_forth",
+      "aerospace:move_window",
+      "aerospace:move_window_to_workspace",
+      "aerospace:move_window_to_monitor",
+      "aerospace:move_workspace_to_monitor",
+      "aerospace:summon_workspace"
+    ]
+  }
+  ```
+
+- **Cursor CLI**: the same tools in `permissions.allow` of `~/.cursor/cli-config.json`, written `Mcp(aerospace:move_window)`. A `deny` entry blocks a tool outright rather than asking, so leave `close_window` out instead.
+- **Claude Code**: `~/.claude/settings.json`. `ask` takes precedence over `allow`, so the server-wide rule can stay:
+
+  ```json
+  {
+    "permissions": {
+      "allow": ["mcp__aerospace"],
+      "ask": ["mcp__aerospace__close_window"]
+    }
+  }
+  ```
+
+- **Claude Desktop**: no config file. Choose "Always allow" on a tool's first prompt, or set each tool's permission in the connector's settings.
+
+New tools are not covered by the explicit Cursor lists; add them when you add a tool.
 
 ## Behavior
 
