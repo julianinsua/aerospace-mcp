@@ -2,6 +2,7 @@
   "name": "aerospace-mcp",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "bin": {
     "aerospace-mcp": "./dist/index.js"
