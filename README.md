@@ -4,8 +4,8 @@ Local [MCP](https://modelcontextprotocol.io) server that controls the [AeroSpace
 
 Tools:
 
-- Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`, and the focus tools `focus_window`, `focus_monitor`, `switch_workspace`, `workspace_back_and_forth` (they change focus, not the window tree).
-- Mutating, only with `AEROSPACE_ALLOW_MUTATIONS=1`: `move_window`, `summon_workspace`, `move_workspace_to_monitor`, `move_window_to_workspace`, `close_window` (destructive, requires `confirm: true`).
+- Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`, and the focus tools `focus_window`, `focus_back_and_forth`, `focus_monitor`, `switch_workspace`, `workspace_back_and_forth` (they change focus, not the window tree).
+- Mutating, only with `AEROSPACE_ALLOW_MUTATIONS=1`: `move_window`, `summon_workspace`, `move_workspace_to_monitor`, `move_window_to_workspace`, `move_window_to_monitor`, `close_window` (destructive, requires `confirm: true`).
 
 ## Requirements
 
