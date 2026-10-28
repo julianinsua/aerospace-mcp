@@ -5,7 +5,7 @@ Local [MCP](https://modelcontextprotocol.io) server that controls the [AeroSpace
 Tools:
 
 - Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`.
-- Mutating, only with `AEROSPACE_ALLOW_MUTATIONS=1`: `move_window`, `move_window_to_workspace`, `close_window` (destructive, requires `confirm: true`).
+- Mutating, only with `AEROSPACE_ALLOW_MUTATIONS=1`: `focus_window`, `move_window`, `move_window_to_workspace`, `close_window` (destructive, requires `confirm: true`).
 
 ## Requirements
 

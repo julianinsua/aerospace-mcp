@@ -74,6 +74,11 @@ describe("tool argv", () => {
     ["move_window", { direction: "left" }, ["move", "left"]],
     [
       "move_window",
+      { direction: "down", failIfFullscreen: true, failIfMacosNativeFullscreen: true },
+      ["move", "--fail-if-fullscreen", "--fail-if-macos-native-fullscreen", "down"],
+    ],
+    [
+      "move_window",
       { direction: "up", windowId: 0, boundaries: "workspace", boundariesAction: "stop" },
       [
         "move",
@@ -116,6 +121,38 @@ describe("tool argv", () => {
       { quitIfLastWindow: true, windowId: 7 },
       ["close", "--quit-if-last-window", "--window-id", "7"],
     ],
+    ["focus_window", { target: "left" }, ["focus", "left"]],
+    [
+      "focus_window",
+      {
+        target: "right",
+        boundaries: "all-monitors-outer-frame",
+        boundariesAction: "wrap-around-all-monitors",
+        failIfFullscreen: true,
+      },
+      [
+        "focus",
+        "--boundaries",
+        "all-monitors-outer-frame",
+        "--boundaries-action",
+        "wrap-around-all-monitors",
+        "--fail-if-fullscreen",
+        "right",
+      ],
+    ],
+    [
+      "focus_window",
+      { target: "dfs-next", ignoreFloating: true, boundariesAction: "wrap-around-the-workspace" },
+      [
+        "focus",
+        "--ignore-floating",
+        "--boundaries-action",
+        "wrap-around-the-workspace",
+        "dfs-next",
+      ],
+    ],
+    ["focus_window", { windowId: 0 }, ["focus", "--window-id", "0"]],
+    ["focus_window", { dfsIndex: 0 }, ["focus", "--dfs-index", "0"]],
     ["list_monitors", {}, ["list-monitors", ...MONITOR_FORMAT, "--json"]],
     [
       "list_monitors",
@@ -129,6 +166,19 @@ describe("tool argv", () => {
     ],
   ])("%s %j", (name, input, expected) => {
     expect(argsFor(name, input)).toEqual(expected);
+  });
+
+  it.each([
+    [{}],
+    [{ target: "left", windowId: 3 }],
+    [{ windowId: 3, dfsIndex: 1 }],
+    [{ windowId: 3, ignoreFloating: true }],
+    [{ target: "dfs-next", boundaries: "all-monitors-outer-frame" }],
+    [{ target: "dfs-prev", boundariesAction: "wrap-around-all-monitors" }],
+    [{ target: "dfs-next", failIfFullscreen: true }],
+    [{ dfsIndex: -1 }],
+  ])("focus_window rejects %j", (input) => {
+    expect(() => argsFor("focus_window", input)).toThrow();
   });
 });
 
@@ -173,6 +223,7 @@ describe("registered tools", () => {
       Object.fromEntries(listed.map((tool) => [tool.name, tool.annotations?.readOnlyHint])),
     ).toEqual({
       close_window: false,
+      focus_window: false,
       list_monitors: true,
       list_workspaces: true,
       list_windows: true,

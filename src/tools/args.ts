@@ -40,16 +40,24 @@ export const directionSchema = z
 
 export const stepSchema = z.enum(["next", "prev"]);
 
+export const dfsStepSchema = z.enum(["dfs-next", "dfs-prev"]);
+
 export const boundariesSchema = z
   .enum(["workspace", "all-monitors-outer-frame"])
   .describe(
     "How far the window may move. workspace (the default) keeps it inside its current workspace. all-monitors-outer-frame lets it cross onto the workspace of the adjacent monitor",
   );
 
-export const boundariesActionSchema = z
+export const moveBoundariesActionSchema = z
   .enum(["stop", "fail", "create-implicit-container"])
   .describe(
     "What to do when the window reaches the boundary: stop does nothing, fail exits with an error, create-implicit-container (the default) wraps the windows in a new container",
+  );
+
+export const focusBoundariesActionSchema = z
+  .enum(["stop", "fail", "wrap-around-the-workspace", "wrap-around-all-monitors"])
+  .describe(
+    "What to do when focus would cross the boundary: stop does nothing, fail exits with an error, wrap-around-the-workspace jumps to the opposite edge of the workspace, wrap-around-all-monitors jumps to the opposite edge across all monitors (direction targets only)",
   );
 
 export const windowIdSchema = z

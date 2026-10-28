@@ -1,9 +1,9 @@
 import { z } from "zod";
 import {
-  boundariesActionSchema,
   boundariesSchema,
   directionSchema,
   flag,
+  moveBoundariesActionSchema,
   option,
   windowIdSchema,
 } from "./args.js";
@@ -19,12 +19,12 @@ export const moveWindowTool = defineTool({
     direction: directionSchema,
     windowId: windowIdSchema.optional(),
     boundaries: boundariesSchema.optional(),
-    boundariesAction: boundariesActionSchema.optional(),
-    failIfFullScreen: z
+    boundariesAction: moveBoundariesActionSchema.optional(),
+    failIfFullscreen: z
       .boolean()
       .optional()
       .describe("Exit with an error if the window is in AeroSpace fullscreen"),
-    failIfMacOSNativeFullscreen: z
+    failIfMacosNativeFullscreen: z
       .boolean()
       .optional()
       .describe("Exit with an error if the window is in macOS native fullscreen"),
@@ -35,14 +35,14 @@ export const moveWindowTool = defineTool({
     windowId,
     boundaries,
     boundariesAction,
-    failIfFullScreen,
-    failIfMacOSNativeFullscreen,
+    failIfFullscreen,
+    failIfMacosNativeFullscreen,
   }) => [
     ...option("window-id", windowId),
     ...option("boundaries", boundaries),
     ...option("boundaries-action", boundariesAction),
-    ...flag("fail-if-fullscreen", failIfFullScreen),
-    ...flag("fail-if-macos-native-fullscreen", failIfMacOSNativeFullscreen),
+    ...flag("fail-if-fullscreen", failIfFullscreen),
+    ...flag("fail-if-macos-native-fullscreen", failIfMacosNativeFullscreen),
     direction,
   ],
 });
