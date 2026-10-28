@@ -6,8 +6,6 @@ export const switchWorkspaceTool = defineTool({
   name: "switch_workspace",
   command: "workspace",
   readOnly: true,
-  json: false,
-  hintDestructive: false,
   description:
     "Focus a workspace, either by name or the next or previous workspace on the focused monitor (all workspaces, even empty ones, in alphabetical order). Switching to a name that doesn't exist yet creates an empty workspace with that name.",
   inputSchema: z

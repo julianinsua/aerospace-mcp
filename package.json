@@ -21,6 +21,7 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "check": "biome check .",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "format": "biome format --write ."
   },
   "dependencies": {

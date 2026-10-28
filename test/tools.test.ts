@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
-import type { AerospaceRunner } from "../src/aerospace.js";
+import type { AerospaceResult, AerospaceRunner } from "../src/aerospace.js";
 import { createServer } from "../src/server.js";
 import { tools } from "../src/tools/index.js";
 import { toCommandArgs } from "../src/tools/tool.js";
@@ -36,6 +36,26 @@ describe("tool argv", () => {
       "list_workspaces",
       { scope: "all" },
       ["list-workspaces", "--all", ...WORKSPACE_FORMAT, "--json"],
+    ],
+    [
+      "list_workspaces",
+      { scope: "focused" },
+      ["list-workspaces", "--focused", ...WORKSPACE_FORMAT, "--json"],
+    ],
+    [
+      "list_workspaces",
+      { monitor: 1, visible: false, empty: false },
+      [
+        "list-workspaces",
+        "--monitor",
+        "1",
+        "--visible",
+        "no",
+        "--empty",
+        "no",
+        ...WORKSPACE_FORMAT,
+        "--json",
+      ],
     ],
     [
       "list_workspaces",
@@ -228,13 +248,15 @@ describe("tool argv", () => {
   });
 });
 
-function recordingRunner(): AerospaceRunner & { calls: string[][] } {
+function recordingRunner(
+  result: AerospaceResult = { code: 0, stdout: "", stderr: "" },
+): AerospaceRunner & { calls: string[][] } {
   const calls: string[][] = [];
   return {
     calls,
     async run(args) {
       calls.push(args);
-      return { code: 0, stdout: "", stderr: "" };
+      return result;
     },
   };
 }
@@ -283,6 +305,53 @@ describe("registered tools", () => {
     });
   });
 
+  it("returns parsed JSON from json tools", async () => {
+    const workspaces = [{ workspace: "1" }, { workspace: "S" }];
+    const runner = recordingRunner({ code: 0, stdout: JSON.stringify(workspaces), stderr: "" });
+    const client = await connect(runner);
+
+    const result = await client.callTool({ name: "list_workspaces", arguments: {} });
+
+    expect(runner.calls).toEqual([
+      ["list-workspaces", "--monitor", "focused", ...WORKSPACE_FORMAT, "--json"],
+    ]);
+    expect(result.isError).not.toBe(true);
+    expect(result.content).toEqual([{ type: "text", text: JSON.stringify(workspaces) }]);
+  });
+
+  it("includes the aerospace arguments when the command fails", async () => {
+    const client = await connect(recordingRunner({ code: 1, stdout: "", stderr: "boom\n" }));
+
+    const result = await client.callTool({
+      name: "list_workspaces",
+      arguments: { scope: "all" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content).toEqual([
+      {
+        type: "text",
+        text: `aerospace list-workspaces --all ${WORKSPACE_FORMAT.join(" ")} --json exited with code 1: boom`,
+      },
+    ]);
+  });
+
+  it("includes the aerospace arguments when the output is not JSON", async () => {
+    const client = await connect(recordingRunner({ code: 0, stdout: "not json", stderr: "" }));
+
+    const result = await client.callTool({ name: "list_monitors", arguments: {} });
+
+    expect(result.isError).toBe(true);
+    expect(result.content).toEqual([
+      {
+        type: "text",
+        text: expect.stringMatching(
+          /^aerospace list-monitors --format .* --json returned invalid JSON: /,
+        ),
+      },
+    ]);
+  });
+
   it("hides mutating tools unless AEROSPACE_ALLOW_MUTATIONS is 1", async () => {
     const previous = process.env.AEROSPACE_ALLOW_MUTATIONS;
     delete process.env.AEROSPACE_ALLOW_MUTATIONS;
@@ -315,6 +384,10 @@ describe("registered tools", () => {
     const close = listed.find((tool) => tool.name === "close_window");
     expect(close?.annotations?.destructiveHint).toBe(true);
     expect(close?.inputSchema.required).toContain("confirm");
+    for (const tool of listed.filter((candidate) => candidate.name !== "close_window")) {
+      expect(tool.annotations?.destructiveHint).toBe(false);
+      expect(tool.inputSchema.required ?? []).not.toContain("confirm");
+    }
 
     for (const args of [{ windowId: 7 }, { windowId: 7, confirm: false }]) {
       const rejected = await client.callTool({ name: "close_window", arguments: args });

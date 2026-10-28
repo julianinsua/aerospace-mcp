@@ -6,8 +6,6 @@ export const summonWorkspaceTool = defineTool({
   name: "summon_workspace",
   command: "summon-workspace",
   readOnly: false,
-  json: false,
-  hintDestructive: false,
   description:
     "Move a workspace to the focused monitor and focus it, taking it away from the monitor it was on. With a single monitor it behaves like switch_workspace.",
   inputSchema: z.object({

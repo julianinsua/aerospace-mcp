@@ -29,7 +29,6 @@ export const listWorkspacesTool = defineTool({
         "true lists only workspaces without windows, false only those with windows. Omit to include both",
       ),
   }),
-  hintDestructive: false,
   toArgs: ({ scope, monitor, visible, empty }) => [
     ...(scope
       ? [`--${scope}`]

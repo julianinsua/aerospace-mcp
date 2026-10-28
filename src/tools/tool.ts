@@ -9,8 +9,8 @@ export interface AerospaceTool<Schema extends z.ZodObject = z.ZodObject> {
   description: string;
   inputSchema: Schema;
   readOnly: boolean;
-  json: boolean;
-  hintDestructive: boolean;
+  json?: boolean;
+  hintDestructive?: boolean;
   toArgs(input: z.output<Schema>): string[];
 }
 
@@ -31,9 +31,10 @@ export async function runCommand(
 ): Promise<CallToolResult> {
   try {
     const result = await runner.run(args);
+    const invocation = ["aerospace", ...args].join(" ");
     if (result.code !== 0) {
       const detail = result.stderr.trim() || result.stdout.trim() || "no output";
-      return toolError(`aerospace exited with code ${result.code}: ${detail}`);
+      return toolError(`${invocation} exited with code ${result.code}: ${detail}`);
     }
     if (!parseJson) {
       return { content: [{ type: "text", text: "success" }] };
@@ -43,7 +44,7 @@ export async function runCommand(
       return { content: [{ type: "text", text: JSON.stringify(parsed) }] };
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown parse error";
-      return toolError(`aerospace returned invalid JSON: ${message}`);
+      return toolError(`${invocation} returned invalid JSON: ${message}`);
     }
   } catch (error) {
     return toolError(error instanceof Error ? error.message : String(error));
@@ -66,15 +67,15 @@ export function registerAerospaceTool(
   runner: AerospaceRunner,
   tool: AerospaceTool,
 ): void {
+  const json = tool.json ?? false;
+  const hintDestructive = tool.hintDestructive ?? false;
   server.registerTool(
     tool.name,
     {
       description: tool.description,
-      inputSchema: tool.hintDestructive
-        ? tool.inputSchema.extend(confirmationField)
-        : tool.inputSchema,
-      annotations: { readOnlyHint: tool.readOnly, destructiveHint: tool.hintDestructive },
+      inputSchema: hintDestructive ? tool.inputSchema.extend(confirmationField) : tool.inputSchema,
+      annotations: { readOnlyHint: tool.readOnly, destructiveHint: hintDestructive },
     },
-    async (input) => runCommand(runner, toCommandArgs(tool, input), tool.json),
+    async (input) => runCommand(runner, toCommandArgs(tool, input), json),
   );
 }

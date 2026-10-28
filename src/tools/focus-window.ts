@@ -17,8 +17,6 @@ export const focusWindowTool = defineTool({
   name: "focus_window",
   command: "focus",
   readOnly: true,
-  json: false,
-  hintDestructive: false,
   description:
     "Focus a window: the neighbor in a direction (left, down, up, right), the next or previous window in tree order (dfs-next, dfs-prev), a window by id from list_windows, or a window by its 0-based position in the focused workspace's tree. Pass exactly one of target, windowId or dfsIndex.",
   inputSchema: z
