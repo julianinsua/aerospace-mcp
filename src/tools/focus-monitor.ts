@@ -6,8 +6,6 @@ export const focusMonitorTool = defineTool({
   name: "focus_monitor",
   command: "focus-monitor",
   readOnly: true,
-  json: false,
-  hintDestructive: false,
   description:
     "Focus a monitor: the neighbor in a direction, the next or previous monitor, or a specific monitor by id from list_monitors or by name pattern.",
   inputSchema: z.object({

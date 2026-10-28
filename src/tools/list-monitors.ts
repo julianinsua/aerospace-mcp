@@ -9,7 +9,6 @@ export const listMonitorsTool = defineTool({
   command: "list-monitors",
   readOnly: true,
   json: true,
-  hintDestructive: false,
   description:
     "List monitors with their id, name and whether each is the macOS main display. Use the id with the monitor arguments of list_workspaces and list_windows.",
   inputSchema: z.object({

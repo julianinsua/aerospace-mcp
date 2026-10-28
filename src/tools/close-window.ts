@@ -6,7 +6,6 @@ export const closeWindowTool = defineTool({
   name: "close_window",
   command: "close",
   readOnly: false,
-  json: false,
   hintDestructive: true,
   description:
     "Close a window, as cmd+w would. Acts on the focused window unless windowId is given; prefer passing a windowId from list_windows so a focus change can't close the wrong window.",

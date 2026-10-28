@@ -6,8 +6,6 @@ export const moveWorkspaceToMonitorTool = defineTool({
   name: "move_workspace_to_monitor",
   command: "move-workspace-to-monitor",
   readOnly: false,
-  json: false,
-  hintDestructive: false,
   description:
     "Move a workspace, with its windows, to another monitor. Acts on the focused workspace unless workspace is given. Focus follows the workspace. Fails for workspaces that the config pins to a monitor.",
   inputSchema: z.object({
