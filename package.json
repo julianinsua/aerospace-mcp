@@ -21,7 +21,7 @@
   },
   "type": "module",
   "bin": {
-    "aerospace-mcp": "./dist/index.js"
+    "aerospace-mcp": "dist/index.js"
   },
   "files": [
     "dist"
