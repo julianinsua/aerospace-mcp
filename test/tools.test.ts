@@ -436,6 +436,26 @@ describe("registered tools", () => {
     }
   });
 
+  it("rejects unknown arguments instead of ignoring them", async () => {
+    const runner = recordingRunner();
+    const client = await connect(runner, { allowMutations: true });
+
+    const { tools: listed } = await client.listTools();
+    for (const tool of listed) {
+      expect(tool.inputSchema.additionalProperties).toBe(false);
+    }
+
+    for (const [name, args] of [
+      ["list_windows", { focused: true }],
+      ["focus_window", { windowId: 3, focused: true }],
+      ["close_window", { windowId: 7, confirm: true, force: true }],
+    ] as const) {
+      const rejected = await client.callTool({ name, arguments: args });
+      expect(rejected.isError).toBe(true);
+    }
+    expect(runner.calls).toEqual([]);
+  });
+
   it("requires confirm: true before running close_window", async () => {
     const runner = recordingRunner();
     const client = await connect(runner, { allowMutations: true });

@@ -69,11 +69,14 @@ export function registerAerospaceTool(
 ): void {
   const json = tool.json ?? false;
   const hintDestructive = tool.hintDestructive ?? false;
+  const inputSchema = hintDestructive
+    ? tool.inputSchema.extend(confirmationField)
+    : tool.inputSchema;
   server.registerTool(
     tool.name,
     {
       description: tool.description,
-      inputSchema: hintDestructive ? tool.inputSchema.extend(confirmationField) : tool.inputSchema,
+      inputSchema: inputSchema.strict(),
       annotations: { readOnlyHint: tool.readOnly, destructiveHint: hintDestructive },
     },
     async (input) => runCommand(runner, toCommandArgs(tool, input), json),
