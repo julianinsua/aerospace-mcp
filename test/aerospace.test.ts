@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { aerospaceBin, createExecRunner } from "../src/aerospace.js";
+import { aerospaceBin, createAerospaceRunner } from "../src/aerospace.js";
 
 describe("aerospaceBin", () => {
   const existing =
@@ -37,7 +37,7 @@ describe("aerospaceBin", () => {
   });
 });
 
-describe("createExecRunner", () => {
+describe("createAerospaceRunner", () => {
   const previous = process.env.AEROSPACE_BIN;
 
   afterEach(() => {
@@ -51,7 +51,7 @@ describe("createExecRunner", () => {
   it("returns when the command does not read stdin", async () => {
     process.env.AEROSPACE_BIN = "/bin/cat";
 
-    const result = await createExecRunner().run([]);
+    const result = await createAerospaceRunner().run([]);
 
     expect(result.code).toBe(0);
     expect(result.stdout).toBe("");
@@ -60,8 +60,8 @@ describe("createExecRunner", () => {
   it("reports a missing binary", async () => {
     process.env.AEROSPACE_BIN = "/no/such/aerospace";
 
-    await expect(createExecRunner().run(["list-workspaces", "--all", "--json"])).rejects.toThrow(
-      "aerospace binary not found at /no/such/aerospace. Set AEROSPACE_BIN to the aerospace executable.",
-    );
+    await expect(
+      createAerospaceRunner().run(["list-workspaces", "--all", "--json"]),
+    ).rejects.toThrow("binary not found at /no/such/aerospace.");
   });
 });
