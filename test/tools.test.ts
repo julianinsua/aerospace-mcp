@@ -221,6 +221,34 @@ describe("tool argv", () => {
       { target: "main", workspace: "2" },
       ["move-workspace-to-monitor", "--workspace", "2", "--", "main"],
     ],
+    ["focus_back_and_forth", {}, ["focus-back-and-forth"]],
+    ["move_window_to_monitor", { target: "left" }, ["move-node-to-monitor", "left"]],
+    [
+      "move_window_to_monitor",
+      { target: "next", windowId: 4, focusFollowsWindow: true, wrapAround: true, failIfNoop: true },
+      [
+        "move-node-to-monitor",
+        "--window-id",
+        "4",
+        "--focus-follows-window",
+        "--wrap-around",
+        "next",
+      ],
+    ],
+    [
+      "move_window_to_monitor",
+      { target: 2, windowId: 4, focusFollowsWindow: true, wrapAround: true, failIfNoop: true },
+      [
+        "move-node-to-monitor",
+        "--window-id",
+        "4",
+        "--focus-follows-window",
+        "--fail-if-noop",
+        "--",
+        "2",
+      ],
+    ],
+    ["move_window_to_monitor", { target: "dell" }, ["move-node-to-monitor", "--", "dell"]],
   ])("%s %j", (name, input, expected) => {
     expect(argsFor(name, input)).toEqual(expected);
   });
@@ -243,6 +271,7 @@ describe("tool argv", () => {
     ["switch_workspace", { target: "" }],
     ["focus_monitor", { target: 0 }],
     ["move_workspace_to_monitor", { target: "" }],
+    ["move_window_to_monitor", { target: 0 }],
   ])("%s rejects %j", (name, input) => {
     expect(() => argsFor(name, input)).toThrow();
   });
@@ -291,12 +320,14 @@ describe("registered tools", () => {
       Object.fromEntries(listed.map((tool) => [tool.name, tool.annotations?.readOnlyHint])),
     ).toEqual({
       close_window: false,
+      focus_back_and_forth: true,
       focus_monitor: true,
       focus_window: true,
       list_monitors: true,
       list_workspaces: true,
       list_windows: true,
       move_window: false,
+      move_window_to_monitor: false,
       move_window_to_workspace: false,
       move_workspace_to_monitor: false,
       summon_workspace: false,
@@ -359,6 +390,7 @@ describe("registered tools", () => {
       const client = await connect(recordingRunner());
       const { tools: listed } = await client.listTools();
       expect(listed.map((tool) => tool.name).sort()).toEqual([
+        "focus_back_and_forth",
         "focus_monitor",
         "focus_window",
         "list_monitors",
