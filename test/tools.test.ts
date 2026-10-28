@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
-import type { AerospaceResult, AerospaceRunner } from "../src/aerospace.js";
+import type { Runner, RunResult } from "../src/process.js";
 import { createServer } from "../src/server.js";
 import { tools } from "../src/tools/index.js";
 import { toCommandArgs } from "../src/tools/tool.js";
@@ -300,8 +300,8 @@ describe("tool argv", () => {
 });
 
 function recordingRunner(
-  result: AerospaceResult = { code: 0, stdout: "", stderr: "" },
-): AerospaceRunner & { calls: string[][] } {
+  result: RunResult = { code: 0, stdout: "", stderr: "" },
+): Runner & { calls: string[][] } {
   const calls: string[][] = [];
   return {
     calls,
@@ -313,7 +313,7 @@ function recordingRunner(
 }
 
 async function connect(
-  runner: AerospaceRunner,
+  runner: Runner,
   options?: Parameters<typeof createServer>[1],
 ): Promise<Client> {
   const server = createServer(runner, options);

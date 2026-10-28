@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import type { AerospaceRunner } from "../aerospace.js";
+import type { Runner } from "../process.js";
 
 export interface AerospaceTool<Schema extends z.ZodObject = z.ZodObject> {
   name: string;
@@ -25,7 +25,7 @@ function toolError(text: string): CallToolResult {
 }
 
 export async function runCommand(
-  runner: AerospaceRunner,
+  runner: Runner,
   args: string[],
   parseJson: boolean,
 ): Promise<CallToolResult> {
@@ -64,7 +64,7 @@ const confirmationField = {
 
 export function registerAerospaceTool(
   server: McpServer,
-  runner: AerospaceRunner,
+  runner: Runner,
   tool: AerospaceTool,
 ): void {
   const json = tool.json ?? false;
