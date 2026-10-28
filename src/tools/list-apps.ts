@@ -7,7 +7,6 @@ export const listAppsTool = defineTool({
   command: "list-apps",
   readOnly: true,
   json: true,
-  hintDestructive: false,
   description:
     "List running applications that appear in the Dock with their pid, bundle id and name. Use it to discover bundle ids for the appBundleId filter of list_windows, or pids for its pid filter.",
   inputSchema: z.object({

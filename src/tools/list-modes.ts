@@ -7,7 +7,6 @@ export const listModesTool = defineTool({
   command: "list-modes",
   readOnly: true,
   json: true,
-  hintDestructive: false,
   description:
     "List the binding modes defined in the AeroSpace config, each as a mode id such as main. Pass current to get only the active mode. Use get_config with mode.<id>.binding to see a mode's key bindings.",
   inputSchema: z.object({

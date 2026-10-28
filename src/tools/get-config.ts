@@ -7,7 +7,6 @@ export const getConfigTool = defineTool({
   command: "config",
   readOnly: true,
   json: true,
-  hintDestructive: false,
   description:
     'Read a value from the loaded AeroSpace config as JSON. AeroSpace 0.21 only exposes the mode tree: "mode" holds the binding modes, "mode.main.binding" maps each key binding of the main mode to its command, and "mode.main.binding.alt-1" is a single binding. Pass keys: true to list the keys of a map instead of its contents; name "." with keys lists the top-level keys. Mode ids come from list_modes. Other config sections such as gaps return an error.',
   inputSchema: z.object({

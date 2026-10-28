@@ -14,8 +14,6 @@ export const moveWindowToMonitorTool = defineTool({
   name: "move_window_to_monitor",
   command: "move-node-to-monitor",
   readOnly: false,
-  json: false,
-  hintDestructive: false,
   description:
     "Move a window to another monitor: the neighbor in a direction, the next or previous monitor, or a specific monitor by id from list_monitors or by name pattern. The window lands on the workspace currently visible on that monitor. Acts on the focused window unless windowId is given.",
   inputSchema: z.object({
