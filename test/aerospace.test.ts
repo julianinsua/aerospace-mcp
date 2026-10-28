@@ -1,5 +1,41 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createExecRunner } from "../src/aerospace.js";
+import { aerospaceBin, createExecRunner } from "../src/aerospace.js";
+
+describe("aerospaceBin", () => {
+  const existing =
+    (...files: string[]) =>
+    (file: string) =>
+      files.includes(file);
+
+  it("prefers AEROSPACE_BIN", () => {
+    const env = { AEROSPACE_BIN: "/custom/aerospace", PATH: "/usr/bin" };
+
+    expect(aerospaceBin(env, existing("/usr/bin/aerospace"))).toBe("/custom/aerospace");
+  });
+
+  it("searches PATH before the Homebrew prefixes", () => {
+    const env = { PATH: "/usr/bin:/custom/bin" };
+
+    expect(
+      aerospaceBin(env, existing("/custom/bin/aerospace", "/opt/homebrew/bin/aerospace")),
+    ).toBe("/custom/bin/aerospace");
+  });
+
+  it("falls back to Homebrew when PATH lacks aerospace", () => {
+    const env = { PATH: "/usr/bin:/bin" };
+
+    expect(aerospaceBin(env, existing("/opt/homebrew/bin/aerospace"))).toBe(
+      "/opt/homebrew/bin/aerospace",
+    );
+    expect(aerospaceBin(env, existing("/usr/local/bin/aerospace"))).toBe(
+      "/usr/local/bin/aerospace",
+    );
+  });
+
+  it("returns the bare name when nothing is found", () => {
+    expect(aerospaceBin({}, existing())).toBe("aerospace");
+  });
+});
 
 describe("createExecRunner", () => {
   const previous = process.env.AEROSPACE_BIN;
