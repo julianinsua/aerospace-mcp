@@ -23,6 +23,7 @@ const WINDOW_FORMAT = [
   "%{window-id} %{app-name} %{app-bundle-id} %{app-pid} %{window-title} %{window-is-fullscreen} %{workspace} %{monitor-id}",
 ];
 const MONITOR_FORMAT = ["--format", "%{monitor-id} %{monitor-name} %{monitor-is-main}"];
+const APP_FORMAT = ["--format", "%{app-pid} %{app-bundle-id} %{app-name}"];
 
 describe("tool argv", () => {
   it.each([
@@ -184,6 +185,25 @@ describe("tool argv", () => {
       { mouse: false },
       ["list-monitors", "--mouse", "no", ...MONITOR_FORMAT, "--json"],
     ],
+    ["list_apps", {}, ["list-apps", ...APP_FORMAT, "--json"]],
+    [
+      "list_apps",
+      { macosNativeHidden: true },
+      ["list-apps", "--macos-native-hidden", ...APP_FORMAT, "--json"],
+    ],
+    [
+      "list_apps",
+      { macosNativeHidden: false },
+      ["list-apps", "--macos-native-hidden", "no", ...APP_FORMAT, "--json"],
+    ],
+    ["list_modes", {}, ["list-modes", "--json"]],
+    ["list_modes", { current: true }, ["list-modes", "--current", "--json"]],
+    ["get_config", { name: "mode" }, ["config", "--get", "mode", "--json"]],
+    [
+      "get_config",
+      { name: "mode.main.binding", keys: true },
+      ["config", "--get", "mode.main.binding", "--keys", "--json"],
+    ],
     ["switch_workspace", { target: "S" }, ["workspace", "--", "S"]],
     [
       "switch_workspace",
@@ -272,6 +292,8 @@ describe("tool argv", () => {
     ["focus_monitor", { target: 0 }],
     ["move_workspace_to_monitor", { target: "" }],
     ["move_window_to_monitor", { target: 0 }],
+    ["get_config", {}],
+    ["get_config", { name: "" }],
   ])("%s rejects %j", (name, input) => {
     expect(() => argsFor(name, input)).toThrow();
   });
@@ -323,6 +345,9 @@ describe("registered tools", () => {
       focus_back_and_forth: true,
       focus_monitor: true,
       focus_window: true,
+      get_config: true,
+      list_apps: true,
+      list_modes: true,
       list_monitors: true,
       list_workspaces: true,
       list_windows: true,
@@ -393,6 +418,9 @@ describe("registered tools", () => {
         "focus_back_and_forth",
         "focus_monitor",
         "focus_window",
+        "get_config",
+        "list_apps",
+        "list_modes",
         "list_monitors",
         "list_windows",
         "list_workspaces",

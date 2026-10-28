@@ -4,7 +4,7 @@ Local [MCP](https://modelcontextprotocol.io) server that controls the [AeroSpace
 
 Tools:
 
-- Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`, and the focus tools `focus_window`, `focus_back_and_forth`, `focus_monitor`, `switch_workspace`, `workspace_back_and_forth` (they change focus, not the window tree).
+- Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`, `list_apps`, `list_modes`, `get_config`, and the focus tools `focus_window`, `focus_back_and_forth`, `focus_monitor`, `switch_workspace`, `workspace_back_and_forth` (they change focus, not the window tree).
 - Mutating, only with `AEROSPACE_ALLOW_MUTATIONS=1`: `move_window`, `summon_workspace`, `move_workspace_to_monitor`, `move_window_to_workspace`, `move_window_to_monitor`, `close_window` (destructive, requires `confirm: true`).
 
 ## Requirements
@@ -67,6 +67,9 @@ Each tool runs one `aerospace` subcommand. Read-only tools append `--json` and r
 - `list_monitors`: `monitor-id`, `monitor-name`, `monitor-is-main`.
 - `list_workspaces`: `workspace`, `workspace-is-focused`, `workspace-is-visible`, `monitor-id`, `monitor-name`, `workspace-root-container-layout`.
 - `list_windows`: `window-id`, `app-name`, `app-bundle-id`, `app-pid`, `window-title`, `window-is-fullscreen`, `workspace`, `monitor-id`.
+- `list_apps`: `app-pid`, `app-bundle-id`, `app-name`.
+
+`list_modes` returns `mode-id` entries. `get_config` runs `config --get <name> --json` (plus `--keys` to list a map's keys). AeroSpace 0.21.3 only exposes `mode.*` keys there, such as `mode.main.binding`; other keys fail with `No value at key token`. The text-only forms `--major-keys`, `--all-keys` and `--config-path` are not exposed; `name: "."` with `keys: true` lists the top-level keys instead.
 
 `list_workspaces` and `list_windows` default to the focused monitor, as AeroSpace's docs recommend for automation. Pass `monitor: "all"` or `scope: "all"` to see every monitor. Workspace arguments are names (strings such as `"1"` or `"S"`). `move_window_to_workspace` sends a name after `--`, and treats `"next"` / `"prev"` as steps. Tools without JSON output (`focus_window` and the mutating tools) return `success` when AeroSpace exits 0. The binary comes from `AEROSPACE_BIN`, or `aerospace` on `PATH`. Stdin is closed, because AeroSpace waits on an open stdin pipe. The command times out after 5 seconds. A missing binary, a timeout, a non-zero exit, or invalid JSON becomes a tool error. Exit and JSON errors start with the command that ran, for example `aerospace move right exited with code 1: <stderr>`. Logs go to stderr.
 
