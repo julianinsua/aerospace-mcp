@@ -2,21 +2,18 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { Runner } from "../process.js";
+import type { Runners } from "../runners.js";
 
-export interface AerospaceTool<Schema extends z.ZodObject = z.ZodObject> {
+export interface Tool<Schema extends z.ZodObject = z.ZodObject> {
   name: string;
-  command: string;
   description: string;
   inputSchema: Schema;
   readOnly: boolean;
-  json?: boolean;
   hintDestructive?: boolean;
-  toArgs(input: z.output<Schema>): string[];
+  handle(input: z.output<Schema>, runners: Runners): Promise<CallToolResult>;
 }
 
-export function defineTool<Schema extends z.ZodObject>(
-  tool: AerospaceTool<Schema>,
-): AerospaceTool<Schema> {
+export function defineTool<Schema extends z.ZodObject>(tool: Tool<Schema>): Tool<Schema> {
   return tool;
 }
 
@@ -51,23 +48,13 @@ export async function runCommand(
   }
 }
 
-export function toCommandArgs(tool: AerospaceTool, input: z.output<z.ZodObject>): string[] {
-  const args = [tool.command, ...tool.toArgs(input)];
-  return tool.json ? [...args, "--json"] : args;
-}
-
 const confirmationField = {
   confirm: z
     .literal(true)
     .describe("Must be true. Only set it after the user has explicitly asked for this action"),
 };
 
-export function registerAerospaceTool(
-  server: McpServer,
-  runner: Runner,
-  tool: AerospaceTool,
-): void {
-  const json = tool.json ?? false;
+export function registerTool(server: McpServer, runners: Runners, tool: Tool): void {
   const hintDestructive = tool.hintDestructive ?? false;
   const inputSchema = hintDestructive
     ? tool.inputSchema.extend(confirmationField)
@@ -79,6 +66,6 @@ export function registerAerospaceTool(
       inputSchema: inputSchema.strict(),
       annotations: { readOnlyHint: tool.readOnly, destructiveHint: hintDestructive },
     },
-    async (input) => runCommand(runner, toCommandArgs(tool, input), json),
+    async (input) => tool.handle(input, runners),
   );
 }

@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { format, monitorSchema, option, scopeSchema, workspaceSchema } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const listWindowsTool = defineTool({
+export const listWindowsTool = defineAerospaceTool({
   name: "list_windows",
   command: "list-windows",
   readOnly: true,

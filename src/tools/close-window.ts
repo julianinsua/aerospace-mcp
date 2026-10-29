@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { flag, option, windowIdSchema } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const closeWindowTool = defineTool({
+export const closeWindowTool = defineAerospaceTool({
   name: "close_window",
   command: "close",
   readOnly: false,

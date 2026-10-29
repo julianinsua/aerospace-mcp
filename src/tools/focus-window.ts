@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import {
   boundariesSchema,
   dfsStepSchema,
@@ -8,12 +9,11 @@ import {
   option,
   windowIdSchema,
 } from "./args.js";
-import { defineTool } from "./tool.js";
 
 const isDfsStep = (target: string): target is z.infer<typeof dfsStepSchema> =>
   dfsStepSchema.safeParse(target).success;
 
-export const focusWindowTool = defineTool({
+export const focusWindowTool = defineAerospaceTool({
   name: "focus_window",
   command: "focus",
   readOnly: true,

@@ -1,10 +1,10 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { format, toggle } from "./args.js";
-import { defineTool } from "./tool.js";
 
 const LIST_MONITORS_FORMAT = ["monitor-id", "monitor-name", "monitor-is-main"];
 
-export const listMonitorsTool = defineTool({
+export const listMonitorsTool = defineAerospaceTool({
   name: "list_monitors",
   command: "list-monitors",
   readOnly: true,

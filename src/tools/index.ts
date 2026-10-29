@@ -14,10 +14,10 @@ import { moveWindowToWorkspaceTool } from "./move-window-to-workspace.js";
 import { moveWorkspaceToMonitorTool } from "./move-workspace-to-monitor.js";
 import { summonWorkspaceTool } from "./summon-workspace.js";
 import { switchWorkspaceTool } from "./switch-workspace.js";
-import type { AerospaceTool } from "./tool.js";
+import type { Tool } from "./tool.js";
 import { workspaceBackAndForthTool } from "./workspace-back-and-forth.js";
 
-export const tools: AerospaceTool[] = [
+export const tools: Tool[] = [
   closeWindowTool,
   focusBackAndForthTool,
   focusMonitorTool,

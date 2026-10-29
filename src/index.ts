@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createAerospaceRunner } from "./aerospace.js";
 import { serverOptions } from "./options.js";
+import { createRunners } from "./runners.js";
 import { createServer } from "./server.js";
 
 try {
-  const server = createServer(createAerospaceRunner(), serverOptions());
+  const runners = createRunners();
+  const server = createServer(runners, serverOptions());
   await server.connect(new StdioServerTransport());
   console.error("aerospace-mcp listening on stdio");
 } catch (error) {

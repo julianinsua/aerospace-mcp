@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { monitorTargetArgs, monitorTargetSchema } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const focusMonitorTool = defineTool({
+export const focusMonitorTool = defineAerospaceTool({
   name: "focus_monitor",
   command: "focus-monitor",
   readOnly: true,

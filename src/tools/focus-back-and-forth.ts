@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { defineTool } from "./tool.js";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 
-export const focusBackAndForthTool = defineTool({
+export const focusBackAndForthTool = defineAerospaceTool({
   name: "focus_back_and_forth",
   command: "focus-back-and-forth",
   readOnly: true,

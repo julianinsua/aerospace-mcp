@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { flag, isStep } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const switchWorkspaceTool = defineTool({
+export const switchWorkspaceTool = defineAerospaceTool({
   name: "switch_workspace",
   command: "workspace",
   readOnly: true,

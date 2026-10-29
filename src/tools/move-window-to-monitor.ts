@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import {
   flag,
   isDirection,
@@ -8,9 +9,8 @@ import {
   option,
   windowIdSchema,
 } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const moveWindowToMonitorTool = defineTool({
+export const moveWindowToMonitorTool = defineAerospaceTool({
   name: "move_window_to_monitor",
   command: "move-node-to-monitor",
   readOnly: false,

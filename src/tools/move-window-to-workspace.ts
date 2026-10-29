@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { flag, isStep, option, windowIdSchema } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const moveWindowToWorkspaceTool = defineTool({
+export const moveWindowToWorkspaceTool = defineAerospaceTool({
   name: "move_window_to_workspace",
   command: "move-node-to-workspace",
   readOnly: false,

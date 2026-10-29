@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { flag, option } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const getConfigTool = defineTool({
+export const getConfigTool = defineAerospaceTool({
   name: "get_config",
   command: "config",
   readOnly: true,

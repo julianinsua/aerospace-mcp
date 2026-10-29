@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { flag } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const listModesTool = defineTool({
+export const listModesTool = defineAerospaceTool({
   name: "list_modes",
   command: "list-modes",
   readOnly: true,
