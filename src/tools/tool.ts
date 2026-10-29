@@ -17,7 +17,7 @@ export function defineTool<Schema extends z.ZodObject>(tool: Tool<Schema>): Tool
   return tool;
 }
 
-function toolError(text: string): CallToolResult {
+export function toolError(text: string): CallToolResult {
   return { isError: true, content: [{ type: "text", text }] };
 }
 

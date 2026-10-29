@@ -4,7 +4,7 @@ Local [MCP](https://modelcontextprotocol.io) server that controls the [AeroSpace
 
 Tools:
 
-- Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`, `list_apps`, `list_modes`, `get_config`, and the focus tools `focus_window`, `focus_back_and_forth`, `focus_monitor`, `switch_workspace`, `workspace_back_and_forth` (they change focus, not the window tree).
+- Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`, `list_apps`, `list_installed_apps`, `list_modes`, `get_config`, and the focus tools `focus_window`, `focus_back_and_forth`, `focus_monitor`, `switch_workspace`, `workspace_back_and_forth` (they change focus, not the window tree).
 - Mutating, only with `--allow-mutations`: `move_window`, `summon_workspace`, `move_workspace_to_monitor`, `move_window_to_workspace`, `move_window_to_monitor`, `close_window` (destructive, requires `confirm: true`).
 
 ## Requirements
@@ -132,12 +132,14 @@ git push origin v0.1.1
 
 ## Behavior
 
-Each tool runs one `aerospace` subcommand. Tools with `json: true` (the list tools and `get_config`) append `--json` and return AeroSpace's JSON. The list tools also pass `--format`, so each entry carries its context:
+Each tool except `list_installed_apps` runs one `aerospace` subcommand. Tools with `json: true` (the list tools and `get_config`) append `--json` and return AeroSpace's JSON. The list tools also pass `--format`, so each entry carries its context:
 
 - `list_monitors`: `monitor-id`, `monitor-name`, `monitor-is-main`.
 - `list_workspaces`: `workspace`, `workspace-is-focused`, `workspace-is-visible`, `monitor-id`, `monitor-name`, `workspace-root-container-layout`.
 - `list_windows`: `window-id`, `app-name`, `app-bundle-id`, `app-pid`, `window-title`, `window-is-fullscreen`, `workspace`, `monitor-id`.
 - `list_apps`: `app-pid`, `app-bundle-id`, `app-name`.
+
+`list_installed_apps` lists apps that are installed but not necessarily running, so an agent can find a bundle id before the app has a window. It asks Spotlight with `mdfind` for app bundles in `/Applications` and `/System/Applications` (including subfolders such as `Utilities`), then reads every bundle id and display name with one `mdls -raw` call. Each entry has `app-bundle-id`, `app-name` and `app-path`, sorted by name. Apps without a bundle id are skipped. If Spotlight indexing is off, `mdfind` finds nothing and the tool returns an error saying so.
 
 `list_modes` returns `mode-id` entries. `get_config` runs `config --get <name> --json` (plus `--keys` to list a map's keys). AeroSpace 0.21.3 only exposes `mode.*` keys there, such as `mode.main.binding`; other keys fail with `No value at key token`. The text-only forms `--major-keys`, `--all-keys` and `--config-path` are not exposed; `name: "."` with `keys: true` lists the top-level keys instead.
 
@@ -145,10 +147,14 @@ Each tool runs one `aerospace` subcommand. Tools with `json: true` (the list too
 
 ## Adding a tool
 
-Each tool is one module in `src/tools/` built with `defineTool`: MCP name, AeroSpace subcommand, description, Zod input schema, `readOnly` (required), and `toArgs(input)` returning the arguments after the subcommand. `json` (the subcommand supports `--json`) and `hintDestructive` are optional and default to `false`; set them only when they are `true`. Use the `option`, `flag`, `toggle` and `format` helpers from `src/tools/args.ts`. Add the tool to the list in `src/tools/index.ts` and an argv case to `test/tools.test.ts`. `registerAerospaceTool` handles registration, `--json` and JSON parsing for `json: true`, the `readOnlyHint` and `destructiveHint` annotations, the `confirm` field and error mapping.
+Each tool is one module in `src/tools/`. A tool that wraps one AeroSpace subcommand uses `defineAerospaceTool`: MCP name, AeroSpace subcommand, description, Zod input schema, `readOnly` (required), and `toArgs(input)` returning the arguments after the subcommand. `json` (the subcommand supports `--json`) and `hintDestructive` are optional and default to `false`; set them only when they are `true`. Use the `option`, `flag`, `toggle` and `format` helpers from `src/tools/args.ts`. `defineAerospaceTool` builds the tool's `handle`, which adds `--json` and parses the output for `json: true` and maps errors.
+
+A tool that runs other programs uses `defineTool` and writes `handle(input, runners)` itself, as `list_installed_apps` does. `runners` (`src/runners.ts`) holds one runner per binary, so tests can pass fakes; add a field there for a new binary.
+
+Add the tool to the list in `src/tools/index.ts` and tests: an argv case in `test/tools.test.ts` for AeroSpace tools, or a test file of its own. `registerTool` handles registration, the `readOnlyHint` and `destructiveHint` annotations and the `confirm` field for every tool.
 
 ## Mutations
 
-Tools with `readOnly: false` change the window tree and are registered only when the server starts with `--allow-mutations` or `AEROSPACE_ALLOW_MUTATIONS=1`. Focus changes count as read-only. Without either, the server exposes the read-only tools only. Unknown command-line flags stop the server at startup, so a typo does not silently drop the mutating tools. `createServer(runner, { allowMutations })` sets the gate directly, which the tests use.
+Tools with `readOnly: false` change the window tree and are registered only when the server starts with `--allow-mutations` or `AEROSPACE_ALLOW_MUTATIONS=1`. Focus changes count as read-only. Without either, the server exposes the read-only tools only. Unknown command-line flags stop the server at startup, so a typo does not silently drop the mutating tools. `createServer(runners, { allowMutations })` sets the gate directly, which the tests use.
 
 Tools with `hintDestructive: true` (currently `close_window`) also get the `destructiveHint` annotation and a required `confirm` argument that must be `true`. A call without it fails validation before AeroSpace runs. This is a guard against accidental calls, not a security boundary: a model can still send `confirm: true`. Moving windows is reversible, so the move tools are not marked destructive.

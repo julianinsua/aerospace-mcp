@@ -4,6 +4,7 @@ import { focusMonitorTool } from "./focus-monitor.js";
 import { focusWindowTool } from "./focus-window.js";
 import { getConfigTool } from "./get-config.js";
 import { listAppsTool } from "./list-apps.js";
+import { listInstalledAppsTool } from "./list-installed-apps.js";
 import { listModesTool } from "./list-modes.js";
 import { listMonitorsTool } from "./list-monitors.js";
 import { listWindowsTool } from "./list-windows.js";
@@ -24,6 +25,7 @@ export const tools: Tool[] = [
   focusWindowTool,
   getConfigTool,
   listAppsTool,
+  listInstalledAppsTool,
   listModesTool,
   listMonitorsTool,
   listWindowsTool,
