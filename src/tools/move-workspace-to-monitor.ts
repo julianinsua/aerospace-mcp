@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { monitorTargetArgs, monitorTargetSchema, option, workspaceSchema } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const moveWorkspaceToMonitorTool = defineTool({
+export const moveWorkspaceToMonitorTool = defineAerospaceTool({
   name: "move_workspace_to_monitor",
   command: "move-workspace-to-monitor",
   readOnly: false,

@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { defineTool } from "./tool.js";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 
-export const workspaceBackAndForthTool = defineTool({
+export const workspaceBackAndForthTool = defineAerospaceTool({
   name: "workspace_back_and_forth",
   command: "workspace-back-and-forth",
   readOnly: true,

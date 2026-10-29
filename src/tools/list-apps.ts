@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { format, toggle } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const listAppsTool = defineTool({
+export const listAppsTool = defineAerospaceTool({
   name: "list_apps",
   command: "list-apps",
   readOnly: true,

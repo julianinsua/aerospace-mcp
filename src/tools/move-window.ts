@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import {
   boundariesSchema,
   directionSchema,
@@ -7,9 +8,8 @@ import {
   option,
   windowIdSchema,
 } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const moveWindowTool = defineTool({
+export const moveWindowTool = defineAerospaceTool({
   name: "move_window",
   command: "move",
   readOnly: false,

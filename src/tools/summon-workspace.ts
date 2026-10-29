@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { flag, workspaceSchema } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const summonWorkspaceTool = defineTool({
+export const summonWorkspaceTool = defineAerospaceTool({
   name: "summon_workspace",
   command: "summon-workspace",
   readOnly: false,

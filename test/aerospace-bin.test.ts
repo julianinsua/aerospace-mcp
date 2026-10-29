@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { aerospaceBin, createAerospaceRunner } from "../src/aerospace.js";
+import { aerospaceBin, createAerospaceRunner } from "../src/aerospace-bin.js";
 
 describe("aerospaceBin", () => {
   const existing =

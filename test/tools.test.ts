@@ -2,16 +2,18 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 import type { Runner, RunResult } from "../src/process.js";
+import type { Runners } from "../src/runners.js";
 import { createServer } from "../src/server.js";
 import { tools } from "../src/tools/index.js";
-import { toCommandArgs } from "../src/tools/tool.js";
 
-function argsFor(name: string, input: Record<string, unknown>): string[] {
+async function argsFor(name: string, input: Record<string, unknown>): Promise<string[]> {
   const tool = tools.find((candidate) => candidate.name === name);
   if (!tool) {
     throw new Error(`no tool named ${name}`);
   }
-  return toCommandArgs(tool, tool.inputSchema.parse(input));
+  const runner = recordingRunner();
+  await tool.handle(tool.inputSchema.parse(input), runnersWith(runner));
+  return runner.calls[0] ?? [];
 }
 
 const WORKSPACE_FORMAT = [
@@ -269,8 +271,8 @@ describe("tool argv", () => {
       ],
     ],
     ["move_window_to_monitor", { target: "dell" }, ["move-node-to-monitor", "--", "dell"]],
-  ])("%s %j", (name, input, expected) => {
-    expect(argsFor(name, input)).toEqual(expected);
+  ])("%s %j", async (name, input, expected) => {
+    expect(await argsFor(name, input)).toEqual(expected);
   });
 
   it.each([
@@ -282,8 +284,8 @@ describe("tool argv", () => {
     [{ target: "dfs-prev", boundariesAction: "wrap-around-all-monitors" }],
     [{ target: "dfs-next", failIfFullscreen: true }],
     [{ dfsIndex: -1 }],
-  ])("focus_window rejects %j", (input) => {
-    expect(() => argsFor("focus_window", input)).toThrow();
+  ])("focus_window rejects %j", async (input) => {
+    await expect(argsFor("focus_window", input)).rejects.toThrow();
   });
 
   it.each([
@@ -294,8 +296,8 @@ describe("tool argv", () => {
     ["move_window_to_monitor", { target: 0 }],
     ["get_config", {}],
     ["get_config", { name: "" }],
-  ])("%s rejects %j", (name, input) => {
-    expect(() => argsFor(name, input)).toThrow();
+  ])("%s rejects %j", async (name, input) => {
+    await expect(argsFor(name, input)).rejects.toThrow();
   });
 });
 
@@ -312,11 +314,23 @@ function recordingRunner(
   };
 }
 
+function unexpectedRunner(bin: string): Runner {
+  return {
+    async run(args) {
+      throw new Error(`unexpected ${bin} call: ${args.join(" ")}`);
+    },
+  };
+}
+
+function runnersWith(aerospace: Runner): Runners {
+  return { aerospace, mdfind: unexpectedRunner("mdfind"), mdls: unexpectedRunner("mdls") };
+}
+
 async function connect(
   runner: Runner,
   options?: Parameters<typeof createServer>[1],
 ): Promise<Client> {
-  const server = createServer(runner, options);
+  const server = createServer(runnersWith(runner), options);
   const client = new Client({ name: "test", version: "0.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await Promise.all([client.connect(clientTransport), server.connect(serverTransport)]);

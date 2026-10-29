@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { defineAerospaceTool } from "./aerospace-tool.js";
 import { format, monitorSchema, option, scopeSchema, toggle } from "./args.js";
-import { defineTool } from "./tool.js";
 
-export const listWorkspacesTool = defineTool({
+export const listWorkspacesTool = defineAerospaceTool({
   name: "list_workspaces",
   command: "list-workspaces",
   readOnly: true,
