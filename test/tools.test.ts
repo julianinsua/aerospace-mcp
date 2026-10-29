@@ -1,10 +1,10 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
-import type { Runner, RunResult } from "../src/process.js";
-import type { Runners } from "../src/runners.js";
+import type { Runner } from "../src/process.js";
 import { createServer } from "../src/server.js";
 import { tools } from "../src/tools/index.js";
+import { recordingRunner, runnersWith } from "./runners.js";
 
 async function argsFor(name: string, input: Record<string, unknown>): Promise<string[]> {
   const tool = tools.find((candidate) => candidate.name === name);
@@ -12,7 +12,7 @@ async function argsFor(name: string, input: Record<string, unknown>): Promise<st
     throw new Error(`no tool named ${name}`);
   }
   const runner = recordingRunner();
-  await tool.handle(tool.inputSchema.parse(input), runnersWith(runner));
+  await tool.handle(tool.inputSchema.parse(input), runnersWith({ aerospace: runner }));
   return runner.calls[0] ?? [];
 }
 
@@ -301,36 +301,11 @@ describe("tool argv", () => {
   });
 });
 
-function recordingRunner(
-  result: RunResult = { code: 0, stdout: "", stderr: "" },
-): Runner & { calls: string[][] } {
-  const calls: string[][] = [];
-  return {
-    calls,
-    async run(args) {
-      calls.push(args);
-      return result;
-    },
-  };
-}
-
-function unexpectedRunner(bin: string): Runner {
-  return {
-    async run(args) {
-      throw new Error(`unexpected ${bin} call: ${args.join(" ")}`);
-    },
-  };
-}
-
-function runnersWith(aerospace: Runner): Runners {
-  return { aerospace, mdfind: unexpectedRunner("mdfind"), mdls: unexpectedRunner("mdls") };
-}
-
 async function connect(
   runner: Runner,
   options?: Parameters<typeof createServer>[1],
 ): Promise<Client> {
-  const server = createServer(runnersWith(runner), options);
+  const server = createServer(runnersWith({ aerospace: runner }), options);
   const client = new Client({ name: "test", version: "0.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await Promise.all([client.connect(clientTransport), server.connect(serverTransport)]);
@@ -361,6 +336,7 @@ describe("registered tools", () => {
       focus_window: true,
       get_config: true,
       list_apps: true,
+      list_installed_apps: true,
       list_modes: true,
       list_monitors: true,
       list_workspaces: true,
@@ -434,6 +410,7 @@ describe("registered tools", () => {
         "focus_window",
         "get_config",
         "list_apps",
+        "list_installed_apps",
         "list_modes",
         "list_monitors",
         "list_windows",
