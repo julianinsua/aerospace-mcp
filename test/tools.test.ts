@@ -345,6 +345,7 @@ describe("registered tools", () => {
       move_window_to_monitor: false,
       move_window_to_workspace: false,
       move_workspace_to_monitor: false,
+      open_app: false,
       summon_workspace: false,
       switch_workspace: true,
       workspace_back_and_forth: true,

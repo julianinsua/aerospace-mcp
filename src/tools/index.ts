@@ -13,6 +13,7 @@ import { moveWindowTool } from "./move-window.js";
 import { moveWindowToMonitorTool } from "./move-window-to-monitor.js";
 import { moveWindowToWorkspaceTool } from "./move-window-to-workspace.js";
 import { moveWorkspaceToMonitorTool } from "./move-workspace-to-monitor.js";
+import { openAppTool } from "./open-app.js";
 import { summonWorkspaceTool } from "./summon-workspace.js";
 import { switchWorkspaceTool } from "./switch-workspace.js";
 import type { Tool } from "./tool.js";
@@ -34,6 +35,7 @@ export const tools: Tool[] = [
   moveWindowToMonitorTool,
   moveWindowToWorkspaceTool,
   moveWorkspaceToMonitorTool,
+  openAppTool,
   summonWorkspaceTool,
   switchWorkspaceTool,
   workspaceBackAndForthTool,
