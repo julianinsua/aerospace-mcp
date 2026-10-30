@@ -27,6 +27,7 @@ export function runnersWith(runners: Partial<Runners>): Runners {
     aerospace: throwingRunner("unexpected aerospace call"),
     mdfind: throwingRunner("unexpected mdfind call"),
     mdls: throwingRunner("unexpected mdls call"),
+    open: throwingRunner("unexpected open call"),
     ...runners,
   };
 }

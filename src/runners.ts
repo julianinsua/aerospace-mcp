@@ -5,6 +5,7 @@ export interface Runners {
   aerospace: Runner;
   mdfind: Runner;
   mdls: Runner;
+  open: Runner;
 }
 
 export const createRunners = (): Runners => {
@@ -12,5 +13,6 @@ export const createRunners = (): Runners => {
     aerospace: createAerospaceRunner(),
     mdfind: createRunner("/usr/bin/mdfind"),
     mdls: createRunner("/usr/bin/mdls"),
+    open: createRunner("/usr/bin/open"),
   };
 };

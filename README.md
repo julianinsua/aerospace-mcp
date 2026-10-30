@@ -5,7 +5,7 @@ Local [MCP](https://modelcontextprotocol.io) server that controls the [AeroSpace
 Tools:
 
 - Read-only, always available: `list_monitors`, `list_workspaces`, `list_windows`, `list_apps`, `list_installed_apps`, `list_modes`, `get_config`, and the focus tools `focus_window`, `focus_back_and_forth`, `focus_monitor`, `switch_workspace`, `workspace_back_and_forth` (they change focus, not the window tree).
-- Mutating, only with `--allow-mutations`: `move_window`, `summon_workspace`, `move_workspace_to_monitor`, `move_window_to_workspace`, `move_window_to_monitor`, `close_window` (destructive, requires `confirm: true`).
+- Mutating, only with `--allow-mutations`: `move_window`, `summon_workspace`, `move_workspace_to_monitor`, `move_window_to_workspace`, `move_window_to_monitor`, `open_app` (launches an app that is not running), `close_window` (destructive, requires `confirm: true`).
 
 ## Requirements
 
@@ -64,7 +64,8 @@ By default every client asks before each call. To let agents move windows on com
       "aerospace:switch_*",
       "aerospace:workspace_*",
       "aerospace:move_*",
-      "aerospace:summon_*"
+      "aerospace:summon_*",
+      "aerospace:open_*"
     ]
   }
   ```
@@ -132,7 +133,7 @@ git push origin v0.1.1
 
 ## Behavior
 
-Each tool except `list_installed_apps` runs one `aerospace` subcommand. Tools with `json: true` (the list tools and `get_config`) append `--json` and return AeroSpace's JSON. The list tools also pass `--format`, so each entry carries its context:
+Each tool except `list_installed_apps` and `open_app` runs one `aerospace` subcommand. Tools with `json: true` (the list tools and `get_config`) append `--json` and return AeroSpace's JSON. The list tools also pass `--format`, so each entry carries its context:
 
 - `list_monitors`: `monitor-id`, `monitor-name`, `monitor-is-main`.
 - `list_workspaces`: `workspace`, `workspace-is-focused`, `workspace-is-visible`, `monitor-id`, `monitor-name`, `workspace-root-container-layout`.
@@ -140,6 +141,8 @@ Each tool except `list_installed_apps` runs one `aerospace` subcommand. Tools wi
 - `list_apps`: `app-pid`, `app-bundle-id`, `app-name`.
 
 `list_installed_apps` lists apps that are installed but not necessarily running, so an agent can find a bundle id before the app has a window. It asks Spotlight with `mdfind` for app bundles in `/Applications` and `/System/Applications` (including subfolders such as `Utilities`), then reads every bundle id and display name with one `mdls -raw` call. Each entry has `app-bundle-id`, `app-name` and `app-path`, sorted by name. Apps without a bundle id are skipped. If Spotlight indexing is off, `mdfind` finds nothing and the tool returns an error saying so.
+
+`open_app` launches an app that is not running yet with `open -g -b <bundleId>`, then polls `list-windows --monitor all --app-bundle-id <bundleId>` every 150 ms until a window id appears that was not there before the launch, or `timeoutMs` (default 10000, at most 30000) runs out. It returns the new windows with `window-id`, `window-title` and `workspace`. An app that is already running, an unknown bundle id (`open` exits 1) or no window before the timeout becomes a tool error. New windows appear on the focused workspace.
 
 `list_modes` returns `mode-id` entries. `get_config` runs `config --get <name> --json` (plus `--keys` to list a map's keys). AeroSpace 0.21.3 only exposes `mode.*` keys there, such as `mode.main.binding`; other keys fail with `No value at key token`. The text-only forms `--major-keys`, `--all-keys` and `--config-path` are not exposed; `name: "."` with `keys: true` lists the top-level keys instead.
 
