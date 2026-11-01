@@ -6,6 +6,8 @@ export interface Runners {
   mdfind: Runner;
   mdls: Runner;
   open: Runner;
+  osascript: Runner;
+  plutil: Runner;
 }
 
 export const createRunners = (): Runners => {
@@ -14,5 +16,8 @@ export const createRunners = (): Runners => {
     mdfind: createRunner("/usr/bin/mdfind"),
     mdls: createRunner("/usr/bin/mdls"),
     open: createRunner("/usr/bin/open"),
+    // the first call to each app waits on the macOS automation permission dialog
+    osascript: createRunner("/usr/bin/osascript", 60_000),
+    plutil: createRunner("/usr/bin/plutil"),
   };
 };

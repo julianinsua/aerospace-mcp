@@ -20,6 +20,11 @@ export interface Runner {
   run(args: string[]): Promise<RunResult>;
 }
 
+export function exitFailure(command: string, result: RunResult): string {
+  const detail = result.stderr.trim() || result.stdout.trim() || "no output";
+  return `${command} exited with code ${result.code}: ${detail}`;
+}
+
 export class RunError extends Error {
   constructor(message: string) {
     super(message);

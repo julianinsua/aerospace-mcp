@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import type { Runner } from "../process.js";
+import { exitFailure, type Runner } from "../process.js";
 import type { Runners } from "../runners.js";
 
 export interface Tool<Schema extends z.ZodObject = z.ZodObject> {
@@ -30,8 +30,7 @@ export async function runCommand(
     const result = await runner.run(args);
     const invocation = ["aerospace", ...args].join(" ");
     if (result.code !== 0) {
-      const detail = result.stderr.trim() || result.stdout.trim() || "no output";
-      return toolError(`${invocation} exited with code ${result.code}: ${detail}`);
+      return toolError(exitFailure(invocation, result));
     }
     if (!parseJson) {
       return { content: [{ type: "text", text: "success" }] };
