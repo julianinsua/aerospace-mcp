@@ -1,6 +1,9 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { z } from "zod";
-import type { Runner } from "../process.js";
+import { KNOWN_APPS, NEW_WINDOW_COMMANDS } from "../consts/open-commands.js";
+import { exitFailure, type Runner } from "../process.js";
+import type { Runners } from "../runners.js";
+import { dictionaryLookup } from "../utils/scripting-dictionary.js";
 import { defineTool, toolError } from "./tool.js";
 
 const SECOND = 1_000;
@@ -27,8 +30,7 @@ const getWindowsList = async (
   ]);
 
   if (windows.code !== 0) {
-    const detail = windows.stderr.trim() || windows.stdout.trim() || "no output";
-    throw new Error(`aerospace list-windows exited with code ${windows.code}: ${detail}`);
+    throw new Error(exitFailure("aerospace list-windows", windows));
   }
 
   return JSON.parse(windows.stdout);
@@ -53,10 +55,74 @@ const pollWindowList = async (
   return [];
 };
 
+type RunningApp = {
+  "app-bundle-id": string;
+  "app-bundle-path": string;
+};
+
+const openNonRunningApp = async (openRunner: Runner, bundleId: string): Promise<void> => {
+  const openRes = await openRunner.run(["-g", "-b", bundleId]);
+  if (openRes.code !== 0) {
+    throw new Error(exitFailure("open", openRes));
+  }
+};
+
+const openRunningApp = async (
+  runners: Runners,
+  bundleId: string,
+  runningApp: RunningApp,
+): Promise<void> => {
+  const kind = Object.hasOwn(KNOWN_APPS, bundleId)
+    ? KNOWN_APPS[bundleId]
+    : await dictionaryLookup(runners, runningApp["app-bundle-path"]);
+
+  if (!kind) {
+    throw new Error(`${bundleId} is already running and has no known way to open a new window.`);
+  }
+
+  const commandArgs = [
+    "-e",
+    "on run argv",
+    "-e",
+    `tell application id (item 1 of argv) to ${NEW_WINDOW_COMMANDS[kind]}`,
+    "-e",
+    "end run",
+    bundleId,
+  ];
+
+  const runScriptRes = await runners.osascript.run(commandArgs);
+  if (runScriptRes.code !== 0) {
+    const errorCode = runScriptRes.stderr.match(/\((-?\d+)\)\s*$/)?.[1];
+    switch (errorCode) {
+      case "-1743":
+        throw new Error(
+          `macOS refused to let this server control ${bundleId}. The user has to allow it under System Settings > Privacy & Security > Automation.`,
+        );
+      case "-600":
+        throw new Error(
+          `${bundleId} quit before a new window could be opened. Call open_app again to launch it.`,
+        );
+      default:
+        throw new Error(exitFailure("osascript", runScriptRes));
+    }
+  }
+};
+
+const openWindow = async (
+  runners: Runners,
+  bundleId: string,
+  runningApp?: RunningApp,
+): Promise<void> => {
+  if (!runningApp) {
+    return openNonRunningApp(runners.open, bundleId);
+  }
+  return openRunningApp(runners, bundleId, runningApp);
+};
+
 export const openAppTool = defineTool({
   name: "open_app",
   description:
-    "Launch an app that is not running yet, wait for its first window and return the new windows with their window id, title and workspace. Find bundle ids with list_installed_apps. Apps that are already running are refused. The new window appears on the focused workspace; move it with move_window_to_workspace using the returned window id.",
+    "Open a new window of an app and return the new windows with their window id, title and workspace. Launches the app if it is not running; if it is running, asks it for a new window, which works only for apps with a supported AppleScript command. Find bundle ids with list_installed_apps. The new window appears on the focused workspace; move it with move_window_to_workspace using the returned window id.",
   readOnly: false,
   inputSchema: z.object({
     bundleId: z
@@ -69,51 +135,40 @@ export const openAppTool = defineTool({
       .positive()
       .max(30 * SECOND)
       .default(10 * SECOND)
-      .describe("How long to wait for the app's first window, in milliseconds"),
+      .describe("How long to wait for a new window, in milliseconds"),
   }),
   async handle({ bundleId, timeoutMs }, runners) {
     try {
-      const openedBundleIdsRes = await runners.aerospace.run([
+      const runningAppsRes = await runners.aerospace.run([
         "list-apps",
         "--json",
         "--format",
-        "%{app-bundle-id}",
+        "%{app-bundle-id} %{app-bundle-path}",
       ]);
 
-      if (openedBundleIdsRes.code !== 0) {
-        const detail =
-          openedBundleIdsRes.stderr.trim() || openedBundleIdsRes.stdout.trim() || "no output";
-        return toolError(
-          `aerospace list-apps exited with code ${openedBundleIdsRes.code}: ${detail}`,
-        );
-      }
-      const openBundleIds = JSON.parse(openedBundleIdsRes.stdout.trim()) as {
-        "app-bundle-id": string;
-      }[];
-
-      const isAppRunning = openBundleIds.some((a) => a["app-bundle-id"] === bundleId);
-      if (isAppRunning) {
-        return toolError(
-          `${bundleId} is already running; open_app only launches apps that are not running yet`,
-        );
+      if (runningAppsRes.code !== 0) {
+        return toolError(exitFailure("aerospace list-apps", runningAppsRes));
       }
 
-      const windowsSnapshot = await getWindowsList(runners.aerospace, bundleId);
-      const openRes = await runners.open.run(["-g", "-b", bundleId]);
-      if (openRes.code !== 0) {
-        const details = openRes.stderr.trim() || openRes.stdout.trim() || "no output";
-        return toolError(`open exited with code ${openRes.code}: ${details}`);
-      }
+      const runningApps = JSON.parse(runningAppsRes.stdout.trim()) as RunningApp[];
+
+      const runningApp = runningApps.find((a) => a["app-bundle-id"] === bundleId);
+
+      const openWindowsSnapshot = await getWindowsList(runners.aerospace, bundleId);
+      await openWindow(runners, bundleId, runningApp);
 
       const openedWindows = await pollWindowList(
         runners.aerospace,
         bundleId,
         timeoutMs,
-        windowsSnapshot,
+        openWindowsSnapshot,
       );
+
       if (openedWindows.length === 0) {
-        return toolError(`launched ${bundleId} but no window appeared within ${timeoutMs}ms`);
+        const action = runningApp ? `asked ${bundleId} for a new window` : `launched ${bundleId}`;
+        return toolError(`${action} but no window appeared within ${timeoutMs}ms`);
       }
+
       return { content: [{ type: "text", text: JSON.stringify(openedWindows) }] };
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);

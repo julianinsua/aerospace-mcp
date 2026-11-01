@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { exitFailure } from "../process.js";
 import { defineTool, toolError } from "./tool.js";
 
 export interface InstalledApp {
@@ -39,8 +40,7 @@ export const listInstalledAppsTool = defineTool({
         "kMDItemContentType == 'com.apple.application-bundle'",
       ]);
       if (found.code !== 0) {
-        const detail = found.stderr.trim() || found.stdout.trim() || "no output";
-        return toolError(`mdfind exited with code ${found.code}: ${detail}`);
+        return toolError(exitFailure("mdfind", found));
       }
 
       const paths = found.stdout.split("\n").filter((line) => line.length > 0);
@@ -61,8 +61,7 @@ export const listInstalledAppsTool = defineTool({
       ]);
 
       if (metadata.code !== 0) {
-        const detail = metadata.stderr.trim() || metadata.stdout.trim() || "no output";
-        return toolError(`mdls exited with code ${metadata.code}: ${detail}`);
+        return toolError(exitFailure("mdls", metadata));
       }
 
       const apps = parseInstalledApps(paths, metadata.stdout.split("\0"));
