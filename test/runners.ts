@@ -1,5 +1,8 @@
+import type { Config } from "../src/config.js";
 import type { Runner, RunResult } from "../src/process.js";
 import type { Runners } from "../src/runners.js";
+
+export const emptyConfig: Config = { openers: {} };
 
 export function recordingRunner(
   result: RunResult = { code: 0, stdout: "", stderr: "" },
@@ -30,6 +33,19 @@ export function sequenceRunner(results: RunResult[]): Runner & { calls: string[]
   };
 }
 
+export function recordingExec(result?: RunResult) {
+  const bins: string[] = [];
+  const runner = recordingRunner(result);
+  return {
+    bins,
+    runner,
+    exec: (bin: string) => {
+      bins.push(bin);
+      return runner;
+    },
+  };
+}
+
 export function throwingRunner(message: string): Runner {
   return {
     async run() {
@@ -41,6 +57,7 @@ export function throwingRunner(message: string): Runner {
 export function runnersWith(runners: Partial<Runners>): Runners {
   return {
     aerospace: throwingRunner("unexpected aerospace call"),
+    exec: () => throwingRunner("unexpected exec call"),
     mdfind: throwingRunner("unexpected mdfind call"),
     mdls: throwingRunner("unexpected mdls call"),
     open: throwingRunner("unexpected open call"),

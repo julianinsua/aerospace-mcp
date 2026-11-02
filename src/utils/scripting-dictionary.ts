@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DICTIONARY_KINDS, type WindowKind } from "../consts/open-commands.js";
+import type { Opener } from "../config.js";
+import { DICTIONARY_KINDS, NEW_WINDOW_COMMANDS, type WindowKind } from "../consts/open-commands.js";
 import type { Runners } from "../runners.js";
 
 function applicationBlocks(xml: string): string[] {
@@ -44,7 +45,7 @@ export const dictionaryLookup = async (
   runners: Runners,
   path: string,
   includeDir = "/System/Library/ScriptingDefinitions",
-): Promise<WindowKind | undefined> => {
+): Promise<Opener | undefined> => {
   const commandDictionaryRes = await runners.plutil.run([
     "-extract",
     "OSAScriptingDefinition",
@@ -77,5 +78,11 @@ export const dictionaryLookup = async (
   const reads = await Promise.allSettled(references.map((file) => readFile(file, "utf8")));
   const referenceXmls = reads.flatMap((read) => (read.status === "fulfilled" ? [read.value] : []));
 
-  return pickKind(creatableElements([fileXml, ...referenceXmls]));
+  const kind = pickKind(creatableElements([fileXml, ...referenceXmls]));
+
+  if (!kind) {
+    return undefined;
+  }
+
+  return { type: "applescript", command: NEW_WINDOW_COMMANDS[kind] };
 };

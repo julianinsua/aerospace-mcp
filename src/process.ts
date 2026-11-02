@@ -7,6 +7,7 @@ import {
 } from "node:child_process";
 import { once } from "node:events";
 import type { Readable } from "node:stream";
+import { isNotFound } from "./utils/errors.js";
 
 const DEFAULT_TIMEOUT_MS = 5_000;
 
@@ -86,7 +87,7 @@ function toRunError(bin: string, error: unknown): RunError {
   if (error instanceof RunError) {
     return error;
   }
-  if (typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT") {
+  if (isNotFound(error)) {
     return new RunError(`binary not found at ${bin}.`);
   }
   if (error instanceof Error) {
