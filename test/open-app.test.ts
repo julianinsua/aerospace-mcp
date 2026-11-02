@@ -2,15 +2,30 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Config } from "../src/config.js";
 import type { RunResult } from "../src/process.js";
-import { openAppTool } from "../src/tools/open-app.js";
-import { recordingRunner, runnersWith, sequenceRunner } from "./runners.js";
+import { openAppTool, runOpener } from "../src/tools/open-app.js";
+import {
+  emptyConfig,
+  recordingExec,
+  recordingRunner,
+  runnersWith,
+  sequenceRunner,
+} from "./runners.js";
 
 const ok = (stdout = ""): RunResult => ({ code: 0, stdout, stderr: "" });
 const failed = (stderr: string): RunResult => ({ code: 1, stdout: "", stderr });
 
-const runningApps = (apps: Array<[id: string, path: string]>) =>
-  ok(JSON.stringify(apps.map(([id, path]) => ({ "app-bundle-id": id, "app-bundle-path": path }))));
+const runningApps = (apps: Array<[id: string, path: string, pid?: number]>) =>
+  ok(
+    JSON.stringify(
+      apps.map(([id, path, pid = 100]) => ({
+        "app-bundle-id": id,
+        "app-bundle-path": path,
+        "app-pid": pid,
+      })),
+    ),
+  );
 const windows = (...ids: number[]) =>
   ok(
     JSON.stringify(
@@ -18,7 +33,12 @@ const windows = (...ids: number[]) =>
     ),
   );
 
-const LIST_APPS_ARGS = ["list-apps", "--json", "--format", "%{app-bundle-id} %{app-bundle-path}"];
+const LIST_APPS_ARGS = [
+  "list-apps",
+  "--json",
+  "--format",
+  "%{app-bundle-id} %{app-bundle-path} %{app-pid}",
+];
 const listWindowsArgs = (bundleId: string) => [
   "list-windows",
   "--monitor",
@@ -44,11 +64,22 @@ function text(result: Awaited<ReturnType<typeof openAppTool.handle>>): string {
   return item?.type === "text" ? item.text : "";
 }
 
+const kittyConfig: Config = {
+  openers: {
+    "net.kovidgoyal.kitty": {
+      type: "exec",
+      bin: "{bundlePath}/Contents/MacOS/kitten",
+      args: ["@", "--to", "unix:/tmp/mykitty-{pid}", "launch", "--type=os-window"],
+    },
+  },
+};
+
 const open = (
   bundleId: string,
   runners: Parameters<typeof openAppTool.handle>[1],
   timeoutMs = 1000,
-) => openAppTool.handle(openAppTool.inputSchema.parse({ bundleId, timeoutMs }), runners);
+  config = emptyConfig,
+) => openAppTool.handle(openAppTool.inputSchema.parse({ bundleId, timeoutMs }), runners, config);
 
 describe("open_app input", () => {
   it.each(["com.apple.calculator;ls", "com apple", ""])("rejects the bundle id %j", (bundleId) => {
@@ -215,6 +246,75 @@ describe("open_app for a running app", () => {
     expect(text(result)).toBe(message);
   });
 
+  it("asks kitty for a new OS window with the opener from the config", async () => {
+    const aerospace = sequenceRunner([
+      runningApps([["net.kovidgoyal.kitty", "/Applications/kitty.app", 2006]]),
+      windows(1),
+      windows(1, 8),
+    ]);
+    const kitten = recordingExec();
+
+    const result = await open(
+      "net.kovidgoyal.kitty",
+      runnersWith({ aerospace, exec: kitten.exec }),
+      1000,
+      kittyConfig,
+    );
+
+    expect(kitten.bins).toEqual(["/Applications/kitty.app/Contents/MacOS/kitten"]);
+    expect(kitten.runner.calls).toEqual([
+      ["@", "--to", "unix:/tmp/mykitty-2006", "launch", "--type=os-window"],
+    ]);
+    expect(result.isError).not.toBe(true);
+    expect(JSON.parse(text(result))).toEqual([
+      { "window-id": 8, "window-title": "window 8", workspace: "1" },
+    ]);
+  });
+
+  it("reports a kitty that cannot be reached", async () => {
+    const aerospace = sequenceRunner([
+      runningApps([["net.kovidgoyal.kitty", "/Applications/kitty.app", 2006]]),
+      windows(1),
+    ]);
+    const kitten = recordingExec(failed("Error: Failed to connect to unix:/tmp/mykitty-2006\n"));
+
+    const result = await open(
+      "net.kovidgoyal.kitty",
+      runnersWith({ aerospace, exec: kitten.exec }),
+      1000,
+      kittyConfig,
+    );
+
+    expect(result.isError).toBe(true);
+    expect(text(result)).toBe(
+      "open_app failed: /Applications/kitty.app/Contents/MacOS/kitten exited with code 1: Error: Failed to connect to unix:/tmp/mykitty-2006",
+    );
+  });
+
+  it("prefers an opener from the config over the built-in one", async () => {
+    const aerospace = sequenceRunner([
+      runningApps([["com.google.Chrome", "/Applications/Google Chrome.app"]]),
+      windows(2),
+      windows(2, 6),
+    ]);
+    const chrome = recordingRunner();
+    const config: Config = {
+      openers: { "com.google.Chrome": { type: "newInstance", args: ["--incognito"] } },
+    };
+
+    const result = await open(
+      "com.google.Chrome",
+      runnersWith({ aerospace, open: chrome }),
+      1000,
+      config,
+    );
+
+    expect(chrome.calls).toEqual([
+      ["-n", "-g", "-b", "com.google.Chrome", "--args", "--incognito"],
+    ]);
+    expect(result.isError).not.toBe(true);
+  });
+
   it("reports a request without a new window before the timeout", async () => {
     const aerospace = sequenceRunner([
       runningApps([["com.apple.finder", "/System/Library/CoreServices/Finder.app"]]),
@@ -252,5 +352,58 @@ describe("open_app errors", () => {
     expect(text(result)).toBe(
       "open_app failed: aerospace list-windows exited with code 1: no monitor",
     );
+  });
+});
+
+describe("runOpener", () => {
+  const app = {
+    "app-bundle-id": "com.example.term",
+    "app-bundle-path": "/Applications/Term.app",
+    "app-pid": 42,
+  };
+
+  it("fills the bundle path and pid into an exec opener's bin and args", async () => {
+    const term = recordingExec();
+
+    await runOpener(
+      {
+        type: "exec",
+        bin: "{bundlePath}/Contents/MacOS/term",
+        args: ["--pid={pid}", "{bundlePath}"],
+      },
+      runnersWith({ exec: term.exec }),
+      app,
+    );
+
+    expect(term.bins).toEqual(["/Applications/Term.app/Contents/MacOS/term"]);
+    expect(term.runner.calls).toEqual([["--pid=42", "/Applications/Term.app"]]);
+  });
+
+  it("refuses an exec opener whose bin is not an absolute path", async () => {
+    await expect(
+      runOpener({ type: "exec", bin: "term", args: [] }, runnersWith({}), app),
+    ).rejects.toThrow("opener bin for com.example.term must be an absolute path, got term");
+  });
+
+  it("launches a new instance with the opener's args", async () => {
+    const openRunner = recordingRunner();
+
+    await runOpener(
+      { type: "newInstance", args: ["--remote-debugging-port=9222", "--pid={pid}"] },
+      runnersWith({ open: openRunner }),
+      app,
+    );
+
+    expect(openRunner.calls).toEqual([
+      ["-n", "-g", "-b", "com.example.term", "--args", "--remote-debugging-port=9222", "--pid=42"],
+    ]);
+  });
+
+  it("reports a new instance that open cannot launch", async () => {
+    const openRunner = recordingRunner(failed("LSOpenURLsWithRole() failed with error -10810\n"));
+
+    await expect(
+      runOpener({ type: "newInstance", args: [] }, runnersWith({ open: openRunner }), app),
+    ).rejects.toThrow("open exited with code 1: LSOpenURLsWithRole() failed with error -10810");
   });
 });

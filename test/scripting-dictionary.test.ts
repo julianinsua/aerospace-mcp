@@ -113,10 +113,13 @@ describe("dictionaryLookup", () => {
     ]);
   });
 
-  it("finds the kind in an included file", async () => {
+  it("finds the opener in an included file", async () => {
     const plutil = plutilPrints("Writer.sdef\n");
 
-    expect(await dictionaryLookup(runnersWith({ plutil }), appPath, includeDir)).toBe("document");
+    expect(await dictionaryLookup(runnersWith({ plutil }), appPath, includeDir)).toEqual({
+      type: "applescript",
+      command: "make new document",
+    });
   });
 
   it("skips includes outside the include folder", async () => {
@@ -128,7 +131,10 @@ describe("dictionaryLookup", () => {
   it("skips includes that cannot be read", async () => {
     const plutil = plutilPrints("Missing.sdef\n");
 
-    expect(await dictionaryLookup(runnersWith({ plutil }), appPath, includeDir)).toBe("window");
+    expect(await dictionaryLookup(runnersWith({ plutil }), appPath, includeDir)).toEqual({
+      type: "applescript",
+      command: "make new window",
+    });
   });
 
   it("returns undefined when the app has no dictionary", async () => {

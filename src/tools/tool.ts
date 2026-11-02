@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import type { Config } from "../config.js";
 import { exitFailure, type Runner } from "../process.js";
 import type { Runners } from "../runners.js";
 
@@ -10,7 +11,7 @@ export interface Tool<Schema extends z.ZodObject = z.ZodObject> {
   inputSchema: Schema;
   readOnly: boolean;
   hintDestructive?: boolean;
-  handle(input: z.output<Schema>, runners: Runners): Promise<CallToolResult>;
+  handle(input: z.output<Schema>, runners: Runners, config: Config): Promise<CallToolResult>;
 }
 
 export function defineTool<Schema extends z.ZodObject>(tool: Tool<Schema>): Tool<Schema> {
@@ -53,7 +54,12 @@ const confirmationField = {
     .describe("Must be true. Only set it after the user has explicitly asked for this action"),
 };
 
-export function registerTool(server: McpServer, runners: Runners, tool: Tool): void {
+export function registerTool(
+  server: McpServer,
+  runners: Runners,
+  tool: Tool,
+  config: Config,
+): void {
   const hintDestructive = tool.hintDestructive ?? false;
   const inputSchema = hintDestructive
     ? tool.inputSchema.extend(confirmationField)
@@ -65,6 +71,6 @@ export function registerTool(server: McpServer, runners: Runners, tool: Tool): v
       inputSchema: inputSchema.strict(),
       annotations: { readOnlyHint: tool.readOnly, destructiveHint: hintDestructive },
     },
-    async (input) => tool.handle(input, runners),
+    async (input) => tool.handle(input, runners, config),
   );
 }

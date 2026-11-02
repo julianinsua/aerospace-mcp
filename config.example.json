@@ -1,0 +1,9 @@
+{
+  "openers": {
+    "net.kovidgoyal.kitty": {
+      "type": "exec",
+      "bin": "{bundlePath}/Contents/MacOS/kitten",
+      "args": ["@", "--to", "unix:/tmp/mykitty-{pid}", "launch", "--type=os-window"]
+    }
+  }
+}

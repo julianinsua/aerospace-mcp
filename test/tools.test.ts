@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Runner } from "../src/process.js";
 import { createServer } from "../src/server.js";
 import { tools } from "../src/tools/index.js";
-import { recordingRunner, runnersWith } from "./runners.js";
+import { emptyConfig, recordingRunner, runnersWith } from "./runners.js";
 
 async function argsFor(name: string, input: Record<string, unknown>): Promise<string[]> {
   const tool = tools.find((candidate) => candidate.name === name);
@@ -12,7 +12,7 @@ async function argsFor(name: string, input: Record<string, unknown>): Promise<st
     throw new Error(`no tool named ${name}`);
   }
   const runner = recordingRunner();
-  await tool.handle(tool.inputSchema.parse(input), runnersWith({ aerospace: runner }));
+  await tool.handle(tool.inputSchema.parse(input), runnersWith({ aerospace: runner }), emptyConfig);
   return runner.calls[0] ?? [];
 }
 
