@@ -145,7 +145,7 @@ const openRunningApp = async (
   runningApp: RunningApp,
   config: Config,
 ): Promise<void> => {
-  const mergedOpeners = { ...KNOWN_APPS, ...config?.openers };
+  const mergedOpeners = { ...KNOWN_APPS, ...config.openers };
   const appOpener = Object.hasOwn(mergedOpeners, bundleId)
     ? mergedOpeners[bundleId]
     : await dictionaryLookup(runners, runningApp["app-bundle-path"]);

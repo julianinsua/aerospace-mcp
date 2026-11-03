@@ -28,11 +28,15 @@ export const defaultConfigPath = (env: NodeJS.ProcessEnv = process.env): string 
   return join(configHome, "aerospace-mcp", "config.json");
 };
 
+// MCP clients start the server without a shell, so nothing else expands "~"
+export const expandHome = (path: string): string =>
+  path === "~" || path.startsWith("~/") ? join(homedir(), path.slice(1)) : path;
+
 const errorMessage = (e: unknown) =>
   e instanceof Error ? e.message : `unknown error: ${String(e)}`;
 
-export async function loadConfig(path?: string, env = process.env) {
-  const file = path ?? defaultConfigPath(env);
+export async function loadConfig(path?: string, env = process.env): Promise<Config> {
+  const file = path ? expandHome(path) : defaultConfigPath(env);
   let text: string;
   try {
     text = await readFile(file, "utf8");
@@ -52,7 +56,7 @@ export async function loadConfig(path?: string, env = process.env) {
 
   const parsed = configSchema.safeParse(json);
   if (!parsed.success) {
-    throw new Error(`invalid config ${file}: \n ${z.prettifyError(parsed.error)}`);
+    throw new Error(`invalid config ${file}:\n${z.prettifyError(parsed.error)}`);
   }
   return parsed.data;
 }

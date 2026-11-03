@@ -97,7 +97,7 @@ The server reads an optional JSON config file once at startup, from the first of
 "args": ["-y", "aerospace-mcp", "--allow-mutations", "--config", "/Users/you/aerospace-mcp.json"]
 ```
 
-MCP clients start the server without a shell, so `~` and `$HOME` in the path are not expanded. Use an absolute path.
+MCP clients start the server without a shell, so the server expands a leading `~/` itself. Other shell syntax, such as `$HOME`, is not expanded.
 
 If the default file does not exist, the server starts without a config. These stop the server at startup:
 
