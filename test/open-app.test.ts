@@ -79,7 +79,16 @@ const open = (
   runners: Parameters<typeof openAppTool.handle>[1],
   timeoutMs = 1000,
   config = emptyConfig,
-) => openAppTool.handle(openAppTool.inputSchema.parse({ bundleId, timeoutMs }), runners, config);
+  move: { workspace?: string; focusFollowsWindow?: boolean } = {},
+) =>
+  openAppTool.handle(
+    openAppTool.inputSchema.parse({ bundleId, timeoutMs, ...move }),
+    runners,
+    config,
+  );
+
+const moveCalls = (runner: { calls: string[][] }) =>
+  runner.calls.filter(([command]) => command === "move-node-to-workspace");
 
 describe("open_app input", () => {
   it.each(["com.apple.calculator;ls", "com apple", ""])("rejects the bundle id %j", (bundleId) => {
@@ -110,15 +119,50 @@ describe("open_app for an app that is not running", () => {
 
     const result = await open("com.apple.calculator", runnersWith({ aerospace, open: openRunner }));
 
-    expect(aerospace.calls).toEqual([
-      LIST_APPS_ARGS,
-      listWindowsArgs("com.apple.calculator"),
-      listWindowsArgs("com.apple.calculator"),
-    ]);
+    expect(aerospace.calls[0]).toEqual(LIST_APPS_ARGS);
+    expect(aerospace.calls.slice(1)).toEqual(
+      aerospace.calls.slice(1).map(() => listWindowsArgs("com.apple.calculator")),
+    );
     expect(openRunner.calls).toEqual([["-g", "-b", "com.apple.calculator"]]);
     expect(result.isError).not.toBe(true);
     expect(JSON.parse(text(result))).toEqual([
       { "window-id": 7, "window-title": "window 7", workspace: "1" },
+    ]);
+  });
+
+  it("keeps collecting windows that appear shortly after the first one", async () => {
+    const aerospace = sequenceRunner([runningApps([]), windows(), windows(7), windows(7, 8)]);
+
+    const result = await open(
+      "com.apple.calculator",
+      runnersWith({ aerospace, open: recordingRunner() }),
+    );
+
+    expect(result.isError).not.toBe(true);
+    expect(JSON.parse(text(result)).map((w: { "window-id": number }) => w["window-id"])).toEqual([
+      7, 8,
+    ]);
+  });
+
+  it("moves every new window and lets focus follow only the last one", async () => {
+    const aerospace = sequenceRunner([runningApps([]), windows(), windows(7, 8)]);
+
+    const result = await open(
+      "com.apple.calculator",
+      runnersWith({ aerospace, open: recordingRunner() }),
+      1000,
+      emptyConfig,
+      { workspace: "5", focusFollowsWindow: true },
+    );
+
+    expect(moveCalls(aerospace)).toEqual([
+      ["move-node-to-workspace", "--window-id", "7", "--", "5"],
+      ["move-node-to-workspace", "--window-id", "8", "--focus-follows-window", "--", "5"],
+    ]);
+    expect(result.isError).not.toBe(true);
+    expect(JSON.parse(text(result))).toEqual([
+      { "window-id": 7, "window-title": "window 7", workspace: "5" },
+      { "window-id": 8, "window-title": "window 8", workspace: "5" },
     ]);
   });
 
@@ -167,10 +211,80 @@ describe("open_app for a running app", () => {
     const result = await open(bundleId, runnersWith({ aerospace, osascript }));
 
     expect(osascript.calls).toEqual([scriptArgs(bundleId, command)]);
+    expect(aerospace.calls).toHaveLength(3);
     expect(result.isError).not.toBe(true);
     expect(JSON.parse(text(result))).toEqual([
       { "window-id": 9, "window-title": "window 9", workspace: "1" },
     ]);
+  });
+
+  it("moves the new window to the requested workspace", async () => {
+    const aerospace = sequenceRunner([
+      runningApps([["com.google.Chrome", "/Applications/Google Chrome.app"]]),
+      windows(3),
+      windows(3, 9),
+      ok(),
+    ]);
+
+    const result = await open(
+      "com.google.Chrome",
+      runnersWith({ aerospace, osascript: recordingRunner() }),
+      1000,
+      emptyConfig,
+      { workspace: "5" },
+    );
+
+    expect(aerospace.calls.at(-1)).toEqual([
+      "move-node-to-workspace",
+      "--window-id",
+      "9",
+      "--",
+      "5",
+    ]);
+    expect(JSON.parse(text(result))).toEqual([
+      { "window-id": 9, "window-title": "window 9", workspace: "5" },
+    ]);
+  });
+
+  it("does not move the window when only focusFollowsWindow is given", async () => {
+    const aerospace = sequenceRunner([
+      runningApps([["com.google.Chrome", "/Applications/Google Chrome.app"]]),
+      windows(3),
+      windows(3, 9),
+    ]);
+
+    const result = await open(
+      "com.google.Chrome",
+      runnersWith({ aerospace, osascript: recordingRunner() }),
+      1000,
+      emptyConfig,
+      { focusFollowsWindow: true },
+    );
+
+    expect(moveCalls(aerospace)).toEqual([]);
+    expect(result.isError).not.toBe(true);
+  });
+
+  it("reports a window that could not be moved", async () => {
+    const aerospace = sequenceRunner([
+      runningApps([["com.google.Chrome", "/Applications/Google Chrome.app"]]),
+      windows(3),
+      windows(3, 9),
+      failed("boom\n"),
+    ]);
+
+    const result = await open(
+      "com.google.Chrome",
+      runnersWith({ aerospace, osascript: recordingRunner() }),
+      1000,
+      emptyConfig,
+      { workspace: "5" },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(text(result)).toBe(
+      "opened com.google.Chrome windows 9 but could not move them all to workspace 5: aerospace move-node-to-workspace exited with code 1: boom",
+    );
   });
 
   it("finds the command in the app's scripting dictionary", async () => {
