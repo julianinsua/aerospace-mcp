@@ -1,6 +1,6 @@
 {
   "name": "aerospace-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "MCP server that lets AI agents control the AeroSpace tiling window manager on macOS",
   "keywords": [
     "mcp",
