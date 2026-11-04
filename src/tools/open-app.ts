@@ -6,9 +6,11 @@ import { exitFailure, type Runner } from "../process.js";
 import type { Runners } from "../runners.js";
 import { fill } from "../utils/fill.js";
 import { dictionaryLookup } from "../utils/scripting-dictionary.js";
+import { flag, option } from "./args.js";
 import { defineTool, toolError } from "./tool.js";
 
 const SECOND = 1_000;
+const SETTLE_TIME = 500;
 
 interface AerospaceWindow {
   "window-id": number;
@@ -43,18 +45,28 @@ const pollWindowList = async (
   bundleId: string,
   timeoutMs: number,
   windowsSnapshot: AerospaceWindow[],
+  expectManyWindows: boolean,
 ) => {
   const known = new Set(windowsSnapshot.map((window) => window["window-id"]));
-  const deadline = Date.now() + timeoutMs;
+  const hardDeadline = Date.now() + timeoutMs;
+  let deadline = hardDeadline;
+  const openedWindows: AerospaceWindow[] = [];
   while (Date.now() < deadline) {
     const current = await getWindowsList(aerospaceRunner, bundleId);
     const added = current.filter((window) => !known.has(window["window-id"]));
     if (added.length > 0) {
-      return added;
+      for (const item of added) {
+        openedWindows.push(item);
+        known.add(item["window-id"]);
+      }
+      if (!expectManyWindows) {
+        return openedWindows;
+      }
+      deadline = Math.min(Date.now() + SETTLE_TIME, hardDeadline);
     }
     await sleep(150);
   }
-  return [];
+  return openedWindows;
 };
 
 type RunningApp = {
@@ -169,10 +181,32 @@ const openWindow = async (
   return openRunningApp(runners, bundleId, runningApp, config);
 };
 
+const moveWindowsToWorkspace = async (
+  aerospaceRunner: Runner,
+  openedWindows: AerospaceWindow[],
+  workspace: string,
+  focusFollowsWindow?: boolean,
+): Promise<string[]> => {
+  const errors: string[] = [];
+  for (const [i, w] of openedWindows.entries()) {
+    const moveWindowRes = await aerospaceRunner.run([
+      "move-node-to-workspace",
+      ...option("window-id", w["window-id"]),
+      ...(i === openedWindows.length - 1 ? flag("focus-follows-window", focusFollowsWindow) : []),
+      "--",
+      workspace,
+    ]);
+    if (moveWindowRes.code !== 0) {
+      errors.push(exitFailure("aerospace move-node-to-workspace", moveWindowRes));
+    }
+  }
+  return errors;
+};
+
 export const openAppTool = defineTool({
   name: "open_app",
   description:
-    "Open a new window of an app and return the new windows with their window id, title and workspace. Launches the app if it is not running; if it is running, asks it for a new window, which works only for apps with a known way to open one. Find bundle ids with list_installed_apps. The new window appears on the focused workspace; move it with move_window_to_workspace using the returned window id.",
+    "Open a new window of an app and return the new windows with their window id, title and workspace. Launches the app if it is not running; if it is running, asks it for a new window, which works only for apps with a known way to open one. Find bundle ids with list_installed_apps. New windows appear on the focused workspace unless workspace is given, in which case they are moved there and may briefly show on the focused workspace first.",
   readOnly: false,
   inputSchema: z.object({
     bundleId: z
@@ -186,8 +220,21 @@ export const openAppTool = defineTool({
       .max(30 * SECOND)
       .default(10 * SECOND)
       .describe("How long to wait for a new window, in milliseconds"),
+    workspace: z
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        'Workspace to move the new windows to, by name as returned by list_workspaces (for example "1" or "S"). Defaults to leaving them on the focused workspace',
+      ),
+    focusFollowsWindow: z
+      .boolean()
+      .optional()
+      .describe(
+        "Focus the new window after the move, so focus follows it to the new workspace. Works only when workspace is given",
+      ),
   }),
-  async handle({ bundleId, timeoutMs }, runners, config) {
+  async handle({ bundleId, timeoutMs, workspace, focusFollowsWindow }, runners, config) {
     try {
       const runningAppsRes = await runners.aerospace.run([
         "list-apps",
@@ -212,6 +259,7 @@ export const openAppTool = defineTool({
         bundleId,
         timeoutMs,
         openWindowsSnapshot,
+        runningApp === undefined,
       );
 
       if (openedWindows.length === 0) {
@@ -219,7 +267,25 @@ export const openAppTool = defineTool({
         return toolError(`${action} but no window appeared within ${timeoutMs}ms`);
       }
 
-      return { content: [{ type: "text", text: JSON.stringify(openedWindows) }] };
+      if (!workspace) {
+        return { content: [{ type: "text", text: JSON.stringify(openedWindows) }] };
+      }
+
+      const errors = await moveWindowsToWorkspace(
+        runners.aerospace,
+        openedWindows,
+        workspace,
+        focusFollowsWindow,
+      );
+      if (errors.length > 0) {
+        const ids = openedWindows.map((w) => w["window-id"]).join(", ");
+        return toolError(
+          `opened ${bundleId} windows ${ids} but could not move them all to workspace ${workspace}: ${errors.join("; ")}`,
+        );
+      }
+
+      const moved = openedWindows.map((w) => ({ ...w, workspace }));
+      return { content: [{ type: "text", text: JSON.stringify(moved) }] };
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       return toolError(`open_app failed: ${message}`);
